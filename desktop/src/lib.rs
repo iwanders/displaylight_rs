@@ -5,7 +5,6 @@ use crate::interface::*;
 #[cfg_attr(windows, path = "windows.rs")]
 mod backend;
 
-pub fn get_grabber() -> Box<dyn Grabber>
-{
+pub fn get_grabber() -> Box<dyn Grabber> {
     return backend::get_grabber();
 }
