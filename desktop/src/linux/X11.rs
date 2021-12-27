@@ -46,6 +46,7 @@ pub struct Screen {
 // From X11/X.h
 type XID = u64;
 pub type Window = XID;
+pub type Drawable = XID;
 pub type Colormap = XID;
 
 #[derive(Debug)]
@@ -201,6 +202,14 @@ extern "C" {
         attributes: *mut XWindowAttributes,
     ) -> Status;
 
+    pub fn XDestroyImage(ximage: *mut XImage) -> i32;
+}
+
+#[link(name = "Xext")]
+extern "C" {
+    pub fn XShmQueryExtension(display: *mut Display) -> bool;
+
+
     pub fn XShmCreateImage(
         display: *mut Display,
         visual: *mut Visual,
@@ -215,17 +224,11 @@ extern "C" {
     pub fn XShmAttach(display: *mut Display, shminfo: *const XShmSegmentInfo) -> bool;
     pub fn XShmGetImage(
         display: *mut Display,
-        d: Window, // Technically it is a Drawable
+        d: Drawable, // Technically it is a Drawable
         image: *mut XImage,
         x: i32,
         y: i32,
         plane_mask: u64,
     ) -> bool;
 
-    pub fn XDestroyImage(ximage: *mut XImage) -> i32;
-}
-
-#[link(name = "Xext")]
-extern "C" {
-    pub fn XShmQueryExtension(display: *mut Display) -> bool;
 }

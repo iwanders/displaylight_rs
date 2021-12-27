@@ -23,6 +23,7 @@ struct GrabberX11 {
     display: *mut Display,
     window: Window,
     image: Option<*mut XImage>,
+    shminfo: XShmSegmentInfo,
 }
 
 impl Drop for GrabberX11 {
@@ -50,6 +51,7 @@ impl GrabberX11 {
                 display,
                 window,
                 image: None,
+                shminfo: Default::default()
             }
         }
     }
@@ -58,6 +60,7 @@ impl GrabberX11 {
         println!("self.window: {:?}", self.window);
         let status = unsafe { XGetWindowAttributes(self.display, self.window, &mut attributes) };
         println!("Attributes: {:#?}", attributes);
+        println!("status: {:#?}", status);
 
         let width = std::cmp::min(if (width != 0) {width as i32} else {attributes.width}, attributes.width);
         let height = std::cmp::min(if (height != 0) {height as i32} else {attributes.height}, attributes.height);
@@ -67,8 +70,10 @@ impl GrabberX11 {
 
         let width = std::cmp::min(width, attributes.width - x as i32);
         let height = std::cmp::min(height, attributes.height - y as i32);
+        println!("height: {:#?}", height);
+        println!("width: {:#?}", width);
 
-        let mut shminfo: XShmSegmentInfo = Default::default();
+        // let &mut shminfo = &mut self.shminfo;
         self.image = Some(unsafe {
             XShmCreateImage(
                 self.display,
@@ -76,7 +81,7 @@ impl GrabberX11 {
                 attributes.depth as u32,
                 ZPixmap,
                 0 as *mut libc::c_char,
-                &mut shminfo,
+                &mut self.shminfo,
                 width as u32,
                 height as u32,
             )
@@ -84,27 +89,31 @@ impl GrabberX11 {
         let ximage = self.image.unwrap();
         // Next, create the shared memory information.
         unsafe {
+            println!("ximage addr; {:#?}", ximage);
             println!("ximage; {:#?}", *ximage);
-            println!("shminfo; {:#?}", shminfo);
-            shminfo.shmid = shm::shmget(
+            println!("shminfo; {:#?}", self.shminfo);
+            println!("std::mem::size_of::<shminfo>(); {:#?}", std::mem::size_of::<XShmSegmentInfo>());
+            println!("std::mem::size_of::<XImage>(); {:#?}", std::mem::size_of::<XImage>());
+            println!("((*ximage).bytes_per_line * (*ximage).height) as u64; {:#?}", ((*ximage).bytes_per_line * (*ximage).height) as u64);
+            self.shminfo.shmid = shm::shmget(
                 shm::IPC_PRIVATE,
                 ((*ximage).bytes_per_line * (*ximage).height) as u64,
                 shm::IPC_CREAT | 0x180,
             );
-            println!("shminfo; {:#?}", shminfo);
+            println!("shminfo; {:#?}", self.shminfo);
             (*ximage).data = std::mem::transmute::<*mut libc::c_void, *mut libc::c_char>(
-                shm::shmat(shminfo.shmid, 0 as *const libc::c_void, 0)
+                shm::shmat(self.shminfo.shmid, 0 as *const libc::c_void, 0)
             );
-            shminfo.shmaddr = (*ximage).data;
-            shminfo.readOnly = false;
-            println!("shminfo; {:#?}", shminfo);
+            self.shminfo.shmaddr = (*ximage).data;
+            self.shminfo.readOnly = false;
+            println!("shminfo; {:#?}", self.shminfo);
             println!("(*ximage).data; {:#?}", (*ximage).data);
 
             // And now, we just have to attach the shared memory.
-            if (!XShmAttach(self.display, &shminfo)) {
+            if (!XShmAttach(self.display, &self.shminfo)) {
                 panic!("Couldn't attach shared memory");
             }
-            println!("shminfo; {:#?}", shminfo);
+            println!("post attach shminfo; {:#?}", self.shminfo);
         }
     }
 }
@@ -116,6 +125,7 @@ impl Grabber for GrabberX11 {
         }
         let z;
         println!("going into XShmGetImage");
+        println!("self.image: {:#?}", self.image);
         unsafe {
             z = XShmGetImage(
                 self.display,
