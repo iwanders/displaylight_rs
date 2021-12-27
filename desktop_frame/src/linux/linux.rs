@@ -58,6 +58,8 @@ struct GrabberX11 {
     window: Window,
     image: Option<*mut XImage>,
     shminfo: XShmSegmentInfo,
+    pos_x: u32,
+    pos_y: u32,
 }
 
 impl Drop for GrabberX11 {
@@ -84,10 +86,13 @@ impl GrabberX11 {
                 window,
                 image: None,
                 shminfo: Default::default(),
+                pos_x: 0,
+                pos_y: 0,
             }
         }
     }
-    pub fn prepare(&mut self, x: u32, y: u32, width: u32, height: u32) {
+    pub fn prepare(&mut self, x: u32, y: u32, width: u32, height: u32) -> bool
+    {
         let mut attributes = XWindowAttributes::default();
         let status = unsafe { XGetWindowAttributes(self.display, self.window, &mut attributes) };
         if status != 1 {
@@ -113,6 +118,8 @@ impl GrabberX11 {
 
         let x = std::cmp::min(x as i32, attributes.width);
         let y = std::cmp::min(y as i32, attributes.height);
+        self.pos_x = x as u32;
+        self.pos_y = y as u32;
 
         let width = std::cmp::min(width, attributes.width - x as i32);
         let height = std::cmp::min(height, attributes.height - y as i32);
@@ -150,6 +157,7 @@ impl GrabberX11 {
                 panic!("Couldn't attach shared memory");
             }
         }
+        true
     }
 }
 
@@ -165,8 +173,8 @@ impl Grabber for GrabberX11 {
                 self.display,
                 self.window,
                 self.image.unwrap(),
-                0,
-                0,
+                self.pos_x as i32,
+                self.pos_y as i32,
                 AllPlanes,
             );
         }
@@ -180,6 +188,29 @@ impl Grabber for GrabberX11 {
         } else {
             Box::<ImageX11>::new(ImageX11 { image: None })
         }
+    }
+
+
+    fn get_resolution(&mut self) -> Resolution
+    {
+        let mut x: i32 = 0;
+        let mut y: i32 = 0;
+        let mut width: u32 = 0;
+        let mut height: u32 = 0;
+        let mut border_width: u32 = 0;
+        let mut depth: u32 = 0;
+        let mut window: Window = Default::default();
+        unsafe {
+            XGetGeometry(self.display, self.window, &mut window, &mut x, &mut y, &mut width, &mut height, &mut border_width, &mut depth);
+        }
+
+        Resolution{width, height}
+    }
+
+
+    fn prepare_capture(&mut self, x: u32, y: u32, width: u32, height: u32) -> bool
+    {
+        return GrabberX11::prepare(self, x, y, width, height);
     }
 }
 // fn(*mut display, *mut XErrorEvent) -> i32) -> i32

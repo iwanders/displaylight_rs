@@ -239,6 +239,17 @@ extern "C" {
 
     pub fn XSync(display: *mut Display, discard: Bool);
     pub fn XFlush(display: *mut Display);
+
+    pub fn XGetGeometry(
+        display: *mut Display,
+        drawable: Drawable,
+        root_return: *mut Window,
+        x_return: *mut i32,
+        y_return: *mut i32,
+        width_return: *mut u32,
+        height_return: *mut u32,
+        border_width_return: *mut u32,
+        depth_return: *mut u32) -> Status;
 }
 
 #[link(name = "Xext")]

@@ -1,18 +1,31 @@
 use crate::raster_image::RasterImage;
+
 #[derive(Debug, Default, Copy, Clone)]
+/// Struct to represent a single pixel.
 pub struct RGB {
     pub r: u8,
     pub g: u8,
     pub b: u8,
 }
 
+#[derive(Debug, Default, Copy, Clone)]
+/// Struct to represent the resolution.
+pub struct Resolution{
+    pub width: u32,
+    pub height: u32,
+}
+
+/// Trait for something that represents an image.
 pub trait Image {
+    /// Returns the width of the image.
     fn get_width(&self) -> u32;
+    /// Returns the height of the image.
     fn get_height(&self) -> u32;
 
+    /// Returns a specific pixel's value. The x must be less then width, y less than height.
     fn get_pixel(&self, x: u32, y: u32) -> RGB;
 
-    // Dump a pnm file to disk.
+    /// Dump a pnm file to disk.
     fn write_pnm(&self, filename: &str) -> std::io::Result<()> {
         use std::fs::File;
         use std::io::prelude::*;
@@ -43,7 +56,21 @@ impl Clone for Box<dyn Image> {
     }
 }
 
+/// Trait to which the desktop frame grabbers adhere.
 pub trait Grabber {
+    /// Capture the frame into an internal buffer, creating a 'snapshot'
     fn capture_image(&mut self) -> bool;
+
+    /// Retrieve the image for access. By default this may be backed by the internal buffer
+    /// created by capture_image.
     fn get_image(&mut self) -> Box<dyn Image>;
+
+    /// Retrieve the current full desktop resolution.
+    fn get_resolution(&mut self) -> Resolution;
+
+    /// Attempt to prepare capture for a subsection of the entire desktop.
+    fn prepare_capture(&mut self, _x: u32, _y: u32, _width: u32, _height: u32) -> bool
+    {
+        return false;
+    }
 }
