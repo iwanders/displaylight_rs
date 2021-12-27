@@ -1,5 +1,5 @@
 [workspace]
 
 members = [
-    "desktop"
+    "desktop_frame"
 ]

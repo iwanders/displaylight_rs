@@ -1,6 +1,6 @@
-use desktop;
+use desktop_frame;
 fn main() {
-    let mut grabber = desktop::get_grabber();
+    let mut grabber = desktop_frame::get_grabber();
 
     let res = grabber.capture_image();
     println!("Hello, world! {}", res);
