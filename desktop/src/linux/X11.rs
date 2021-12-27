@@ -187,6 +187,19 @@ impl Default for XShmSegmentInfo {
         }
     }
 }
+
+#[repr(C)]
+#[derive(Debug)]
+pub struct XErrorEvent{
+	type_: i32,
+        display: *mut Display, /* Display the event was read from */
+        serial: u64, /* serial number of failed request */
+        error_code: u8, /* error code of failed request */
+        request_code: u8, /* Major op-code of failed request */
+        minor_code: u8, /* Minor op-code of failed request */
+        resourceid: XID, /* resource id */	
+}
+
 pub const AllPlanes: u64 = 0xFFFFFFFFFFFFFFFF;
 
 #[link(name = "X11")]
@@ -203,6 +216,8 @@ extern "C" {
     ) -> Status;
 
     pub fn XDestroyImage(ximage: *mut XImage) -> i32;
+
+    pub fn XSetErrorHandler(handler: unsafe extern "C" fn(*mut Display, *mut XErrorEvent) -> i32) -> i32;
 }
 
 #[link(name = "Xext")]
@@ -223,7 +238,7 @@ extern "C" {
     pub fn XShmAttach(display: *mut Display, shminfo: *const XShmSegmentInfo) -> bool;
     pub fn XShmGetImage(
         display: *mut Display,
-        d: Drawable, // Technically it is a Drawable
+        d: Drawable,
         image: *mut XImage,
         x: i32,
         y: i32,
