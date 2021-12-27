@@ -10,7 +10,7 @@ pub struct RGB {
 
 #[derive(Debug, Default, Copy, Clone)]
 /// Struct to represent the resolution.
-pub struct Resolution{
+pub struct Resolution {
     pub width: u32,
     pub height: u32,
 }
@@ -26,7 +26,7 @@ pub trait Image {
     fn get_pixel(&self, x: u32, y: u32) -> RGB;
 
     /// Dump a pnm file to disk.
-    fn write_pnm(&self, filename: &str) -> std::io::Result<()> {
+    fn write_ppm(&self, filename: &str) -> std::io::Result<()> {
         use std::fs::File;
         use std::io::prelude::*;
         let mut file = File::create(filename)?;
@@ -69,8 +69,7 @@ pub trait Grabber {
     fn get_resolution(&mut self) -> Resolution;
 
     /// Attempt to prepare capture for a subsection of the entire desktop.
-    fn prepare_capture(&mut self, _x: u32, _y: u32, _width: u32, _height: u32) -> bool
-    {
+    fn prepare_capture(&mut self, _x: u32, _y: u32, _width: u32, _height: u32) -> bool {
         return false;
     }
 }

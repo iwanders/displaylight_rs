@@ -91,8 +91,7 @@ impl GrabberX11 {
             }
         }
     }
-    pub fn prepare(&mut self, x: u32, y: u32, width: u32, height: u32) -> bool
-    {
+    pub fn prepare(&mut self, x: u32, y: u32, width: u32, height: u32) -> bool {
         let mut attributes = XWindowAttributes::default();
         let status = unsafe { XGetWindowAttributes(self.display, self.window, &mut attributes) };
         if status != 1 {
@@ -190,9 +189,7 @@ impl Grabber for GrabberX11 {
         }
     }
 
-
-    fn get_resolution(&mut self) -> Resolution
-    {
+    fn get_resolution(&mut self) -> Resolution {
         let mut x: i32 = 0;
         let mut y: i32 = 0;
         let mut width: u32 = 0;
@@ -201,15 +198,23 @@ impl Grabber for GrabberX11 {
         let mut depth: u32 = 0;
         let mut window: Window = Default::default();
         unsafe {
-            XGetGeometry(self.display, self.window, &mut window, &mut x, &mut y, &mut width, &mut height, &mut border_width, &mut depth);
+            XGetGeometry(
+                self.display,
+                self.window,
+                &mut window,
+                &mut x,
+                &mut y,
+                &mut width,
+                &mut height,
+                &mut border_width,
+                &mut depth,
+            );
         }
 
-        Resolution{width, height}
+        Resolution { width, height }
     }
 
-
-    fn prepare_capture(&mut self, x: u32, y: u32, width: u32, height: u32) -> bool
-    {
+    fn prepare_capture(&mut self, x: u32, y: u32, width: u32, height: u32) -> bool {
         return GrabberX11::prepare(self, x, y, width, height);
     }
 }

@@ -249,7 +249,8 @@ extern "C" {
         width_return: *mut u32,
         height_return: *mut u32,
         border_width_return: *mut u32,
-        depth_return: *mut u32) -> Status;
+        depth_return: *mut u32,
+    ) -> Status;
 }
 
 #[link(name = "Xext")]

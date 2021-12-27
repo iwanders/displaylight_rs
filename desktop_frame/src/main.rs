@@ -11,14 +11,17 @@ fn main() {
     println!("Grabber tried to capture image, succes? {}", res);
     let img = grabber.get_image();
     println!("Grabber writing to temp.");
-    img.write_pnm("/tmp/foo.pnm").unwrap();
+    img.write_ppm("/tmp/foo.ppm").unwrap();
     println!("Grabber done writing");
+
+    let z = desktop_frame::read_ppm("/tmp/foo.ppm").expect("must be good");
+    z.write_ppm("/tmp/bar.ppm").unwrap();
 
     println!("Cloning image.");
 
     let z = img.clone();
     println!("Grabber writing to temp.");
-    z.write_pnm("/tmp/z.pnm").unwrap();
+    z.write_ppm("/tmp/z.ppm").unwrap();
     println!("Grabber done writing");
     println!("First pixel: {:#?}", img.get_pixel(0, 0));
 }

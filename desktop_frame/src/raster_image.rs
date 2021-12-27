@@ -18,6 +18,12 @@ impl RasterImage {
         }
         return res;
     }
+
+    pub fn from_2d_vec(data: &Vec<Vec<RGB>>) -> RasterImage {
+        RasterImage {
+            data: data.to_vec(),
+        }
+    }
 }
 
 impl Image for RasterImage {
