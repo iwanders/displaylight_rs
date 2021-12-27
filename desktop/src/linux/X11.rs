@@ -1,4 +1,4 @@
-use crate::interface::*;
+#![allow(non_camel_case_types, non_snake_case, non_upper_case_globals)]
 use libc;
 // Minimal Rust bindings for the X11 parts we need. Implemented from the X11 headers which are
 // Licensed under the following license.
@@ -208,7 +208,6 @@ extern "C" {
 #[link(name = "Xext")]
 extern "C" {
     pub fn XShmQueryExtension(display: *mut Display) -> bool;
-
 
     pub fn XShmCreateImage(
         display: *mut Display,

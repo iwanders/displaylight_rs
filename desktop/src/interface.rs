@@ -7,6 +7,39 @@ pub struct RGB {
 pub trait Image {
     fn get_width(&self) -> u32;
     fn get_height(&self) -> u32;
+
+    fn get_pixel(&self, x: u32, y: u32) -> RGB;
+
+    // Dump a pnm file to disk.
+    fn write_pnm(&self, filename: &str) -> std::io::Result<()> {
+        use std::time::{Duration, Instant};
+       
+        let now = Instant::now();
+        use std::fs::File;
+        use std::io::prelude::*;
+        let mut file = File::create(filename)?;
+        file.write_all(b"P3\n")?;
+        let width = self.get_width();
+        let height = self.get_height();
+        file.write_all(format!("{} {}\n", width, height).as_ref())?;
+        file.write_all(b"255\n")?;
+        for y in 0..height {
+            let mut v: String = Default::default();
+            v.reserve(4 * 3 * width as usize);
+            for x in 0..width {
+                let color = self.get_pixel(x, y);
+                // file.write(format!("{} {} {} ", color.r, color.g, color.b).as_ref())?;
+                use std::fmt::Write;
+                write!(v, "{} {} {} ", color.r, color.g, color.b).unwrap();
+                // writeln!(&mut file, "{} {} {} ", color.r, color.g, color.b).unwrap();
+            }
+            // println!("v: {}", v);
+            file.write(v.as_ref())?;
+            file.write(b"\n")?;
+        }
+        println!("{}", now.elapsed().as_millis());
+        Ok(())
+    }
 }
 
 pub trait Grabber {
