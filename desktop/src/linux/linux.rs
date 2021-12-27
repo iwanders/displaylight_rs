@@ -36,10 +36,6 @@ impl Image for ImageX11 {
         }
         unsafe {
             let image = &(*(self.image.unwrap()));
-            if x == 0 && y == 0
-            {
-                println!("Data: {:?}", *(image.data));
-            }
             // println!("Image: {:?}", self.image.unwrap());
             // Do some pointer magic and reach into the data, do a few casts and we're golden.
             let data = std::mem::transmute::<*const libc::c_char, *const u8>(image.data);
@@ -92,14 +88,11 @@ impl GrabberX11 {
         }
     }
     pub fn prepare(&mut self, x: u32, y: u32, width: u32, height: u32) {
-
         let mut attributes = XWindowAttributes::default();
         let status = unsafe { XGetWindowAttributes(self.display, self.window, &mut attributes) };
-        if status != 1
-        {
+        if status != 1 {
             panic!("Retrieving the window attributes failed.");
         }
-
 
         let width = std::cmp::min(
             if width != 0 {
@@ -124,8 +117,6 @@ impl GrabberX11 {
         let width = std::cmp::min(width, attributes.width - x as i32);
         let height = std::cmp::min(height, attributes.height - y as i32);
 
-        println!("Attributes: {:#?}", attributes);
-        // let &mut shminfo = &mut self.shminfo;
         self.image = Some(unsafe {
             XShmCreateImage(
                 self.display,
@@ -138,8 +129,6 @@ impl GrabberX11 {
                 height as u32,
             )
         });
-
-
 
         let ximage = self.image.unwrap();
         // Next, create the shared memory information.
@@ -161,7 +150,6 @@ impl GrabberX11 {
                 panic!("Couldn't attach shared memory");
             }
         }
-        println!("self.shminfo: {:#?}", self.shminfo);
     }
 }
 
@@ -173,10 +161,6 @@ impl Grabber for GrabberX11 {
         let z;
 
         unsafe {
-            println!("XShmGetImage: {:?} {:?} {:?} {:#?}", 
-                self.display,
-                self.window,
-                self.image.unwrap(), *(self.image.unwrap()));
             z = XShmGetImage(
                 self.display,
                 self.window,
@@ -200,15 +184,13 @@ impl Grabber for GrabberX11 {
 }
 // fn(*mut display, *mut XErrorEvent) -> i32) -> i32
 
-unsafe extern "C" fn error_handler(_display: *mut Display, event: *mut XErrorEvent) -> i32
-{
+unsafe extern "C" fn error_handler(_display: *mut Display, event: *mut XErrorEvent) -> i32 {
     println!("Error: {:?}", event);
     return 0;
 }
 
-
 pub fn get_grabber() -> Box<dyn Grabber> {
-    unsafe{
+    unsafe {
         XSetErrorHandler(error_handler);
     }
     let mut z = Box::<GrabberX11>::new(GrabberX11::new());

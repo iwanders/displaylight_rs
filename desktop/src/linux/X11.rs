@@ -1,4 +1,9 @@
-#![allow(non_camel_case_types, non_snake_case, non_upper_case_globals)]
+#![allow(
+    non_camel_case_types,
+    non_snake_case,
+    non_upper_case_globals,
+    dead_code
+)]
 use libc;
 // Minimal Rust bindings for the X11 parts we need. Implemented from the X11 headers which are
 // Licensed under the following license.
@@ -192,14 +197,14 @@ impl Default for XShmSegmentInfo {
 
 #[repr(C)]
 #[derive(Debug)]
-pub struct XErrorEvent{
-	type_: i32,
-        display: *mut Display, /* Display the event was read from */
-        serial: u64, /* serial number of failed request */
-        error_code: u8, /* error code of failed request */
-        request_code: u8, /* Major op-code of failed request */
-        minor_code: u8, /* Minor op-code of failed request */
-        resourceid: XID, /* resource id */	
+pub struct XErrorEvent {
+    type_: i32,
+    display: *mut Display, /* Display the event was read from */
+    serial: u64,           /* serial number of failed request */
+    error_code: u8,        /* error code of failed request */
+    request_code: u8,      /* Major op-code of failed request */
+    minor_code: u8,        /* Minor op-code of failed request */
+    resourceid: XID,       /* resource id */
 }
 
 /*
@@ -235,8 +240,6 @@ extern "C" {
     pub fn XSync(display: *mut Display, discard: Bool);
     pub fn XFlush(display: *mut Display);
 }
-
-
 
 #[link(name = "Xext")]
 extern "C" {

@@ -1,4 +1,5 @@
-#[derive(Debug, Default)]
+use crate::raster_image::RasterImage;
+#[derive(Debug, Default, Copy, Clone)]
 pub struct RGB {
     pub r: u8,
     pub g: u8,
@@ -13,9 +14,6 @@ pub trait Image {
 
     // Dump a pnm file to disk.
     fn write_pnm(&self, filename: &str) -> std::io::Result<()> {
-        use std::time::{Duration, Instant};
-       
-        let now = Instant::now();
         use std::fs::File;
         use std::io::prelude::*;
         let mut file = File::create(filename)?;
@@ -29,17 +27,19 @@ pub trait Image {
             v.reserve(4 * 3 * width as usize);
             for x in 0..width {
                 let color = self.get_pixel(x, y);
-                // file.write(format!("{} {} {} ", color.r, color.g, color.b).as_ref())?;
                 use std::fmt::Write;
                 write!(v, "{} {} {} ", color.r, color.g, color.b).unwrap();
-                // writeln!(&mut file, "{} {} {} ", color.r, color.g, color.b).unwrap();
             }
-            // println!("v: {}", v);
             file.write(v.as_ref())?;
             file.write(b"\n")?;
         }
-        println!("{}", now.elapsed().as_millis());
         Ok(())
+    }
+}
+
+impl Clone for Box<dyn Image> {
+    fn clone(&self) -> Self {
+        return Box::new(RasterImage::new(self.as_ref()));
     }
 }
 

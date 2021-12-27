@@ -6,6 +6,8 @@ fn main() {
     println!("Hello, world! {}", res);
     let img = grabber.get_image();
     img.write_pnm("/tmp/foo.pnm").unwrap();
-    println!("First pixel: {:#?}", img.get_pixel(0,0));
 
+    let z = img.clone();
+    z.write_pnm("/tmp/z.pnm").unwrap();
+    println!("First pixel: {:#?}", img.get_pixel(0, 0));
 }
