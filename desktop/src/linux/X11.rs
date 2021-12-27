@@ -49,6 +49,8 @@ pub type Window = XID;
 pub type Drawable = XID;
 pub type Colormap = XID;
 
+type Bool = i32; // Wow!?
+
 #[derive(Debug)]
 #[repr(C)]
 pub struct XWindowAttributes {
@@ -79,11 +81,11 @@ pub struct XWindowAttributes {
     /* value to be used when restoring planes */
     pub backing_pixel: u64,
     /* boolean, should bits under be saved? */
-    pub save_under: bool,
+    pub save_under: Bool,
     /* color map to be associated with window */
     pub colormap: Colormap,
     /* boolean, is color map currently installed*/
-    pub map_installed: bool,
+    pub map_installed: Bool,
     /* IsUnmapped, IsUnviewable, IsViewable */
     pub map_state: i32,
     /* set of events all people have interest in*/
@@ -93,7 +95,7 @@ pub struct XWindowAttributes {
     /* set of events that should not propagate */
     pub do_not_propagate_mask: i64,
     /* boolean value for override-redirect */
-    pub override_redirect: bool,
+    pub override_redirect: Bool,
     /* back pointer to correct screen */
     pub screen: *mut Screen,
 }
@@ -114,14 +116,14 @@ impl Default for XWindowAttributes {
             backing_store: 0,
             backing_planes: 0,
             backing_pixel: 0,
-            save_under: false,
+            save_under: 0,
             colormap: 0 as Colormap,
-            map_installed: false,
+            map_installed: 0,
             map_state: 0,
             all_event_masks: 0,
             your_event_mask: 0,
             do_not_propagate_mask: 0,
-            override_redirect: false,
+            override_redirect: 0,
             screen: 0 as *mut Screen,
         }
     }
@@ -175,7 +177,7 @@ pub struct XShmSegmentInfo {
     pub shmseg: ShmSeg,             /* resource id */
     pub shmid: i32,                 /* kernel id */
     pub shmaddr: *mut libc::c_char, /* address in client */
-    pub readOnly: bool,             /* how the server should attach it */
+    pub readOnly: Bool,             /* how the server should attach it */
 }
 impl Default for XShmSegmentInfo {
     fn default() -> XShmSegmentInfo {
@@ -183,7 +185,7 @@ impl Default for XShmSegmentInfo {
             shmseg: 0,
             shmid: 0,
             shmaddr: 0 as *mut libc::c_char,
-            readOnly: false,
+            readOnly: 0,
         }
     }
 }
@@ -199,6 +201,17 @@ pub struct XErrorEvent{
         minor_code: u8, /* Minor op-code of failed request */
         resourceid: XID, /* resource id */	
 }
+
+/*
+    https://www.remlab.net/op/xlib.shtml
+    typedef int (*XErrorHandler)(Display *, XErrorEvent *);
+    typedef int (*XIOErrorHandler)(Display *);
+
+    XErrorHandler XSetErrorHandler(XErrorHandler handler);
+    XIOErrorHandler XSetIOErrorHandler(XIOErrorHandler handler);
+*/
+
+type XErrorHandler = unsafe extern "C" fn(*mut Display, *mut XErrorEvent) -> i32;
 
 pub const AllPlanes: u64 = 0xFFFFFFFFFFFFFFFF;
 
@@ -217,12 +230,17 @@ extern "C" {
 
     pub fn XDestroyImage(ximage: *mut XImage) -> i32;
 
-    pub fn XSetErrorHandler(handler: unsafe extern "C" fn(*mut Display, *mut XErrorEvent) -> i32) -> i32;
+    pub fn XSetErrorHandler(handler: XErrorHandler) -> XErrorHandler;
+
+    pub fn XSync(display: *mut Display, discard: Bool);
+    pub fn XFlush(display: *mut Display);
 }
+
+
 
 #[link(name = "Xext")]
 extern "C" {
-    pub fn XShmQueryExtension(display: *mut Display) -> bool;
+    pub fn XShmQueryExtension(display: *mut Display) -> Bool;
 
     pub fn XShmCreateImage(
         display: *mut Display,
@@ -235,7 +253,7 @@ extern "C" {
         height: u32,
     ) -> *mut XImage;
 
-    pub fn XShmAttach(display: *mut Display, shminfo: *const XShmSegmentInfo) -> bool;
+    pub fn XShmAttach(display: *mut Display, shminfo: *const XShmSegmentInfo) -> Bool;
     pub fn XShmGetImage(
         display: *mut Display,
         d: Drawable,

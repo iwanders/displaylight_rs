@@ -79,7 +79,7 @@ impl GrabberX11 {
     pub fn new() -> GrabberX11 {
         unsafe {
             let display = XOpenDisplay(0 as *const libc::c_char);
-            if !XShmQueryExtension(display) {
+            if XShmQueryExtension(display) == 0 {
                 panic!("We really need the xshared memory extension. Bailing out.");
             }
             let window = XRootWindow(display, XDefaultScreen(display));
@@ -125,7 +125,6 @@ impl GrabberX11 {
         let height = std::cmp::min(height, attributes.height - y as i32);
 
         println!("Attributes: {:#?}", attributes);
-
         // let &mut shminfo = &mut self.shminfo;
         self.image = Some(unsafe {
             XShmCreateImage(
@@ -155,10 +154,10 @@ impl GrabberX11 {
                 shm::shmat(self.shminfo.shmid, 0 as *const libc::c_void, 0),
             );
             self.shminfo.shmaddr = (*ximage).data;
-            self.shminfo.readOnly = false;
+            self.shminfo.readOnly = 0;
 
             // And now, we just have to attach the shared memory.
-            if !XShmAttach(self.display, &self.shminfo) {
+            if XShmAttach(self.display, &self.shminfo) == 0 {
                 panic!("Couldn't attach shared memory");
             }
         }
@@ -210,7 +209,7 @@ unsafe extern "C" fn error_handler(_display: *mut Display, event: *mut XErrorEve
 
 pub fn get_grabber() -> Box<dyn Grabber> {
     unsafe{
-    XSetErrorHandler(error_handler);
+        XSetErrorHandler(error_handler);
     }
     let mut z = Box::<GrabberX11>::new(GrabberX11::new());
     z.prepare(0, 0, 0, 0);
