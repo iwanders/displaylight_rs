@@ -35,6 +35,8 @@ struct GrabberWin {
     device_context: Option<ID3D11DeviceContext>,
     output: Option<IDXGIOutput>,
     duplicator: Option<IDXGIOutputDuplication>,
+
+    image: Option<ID3D11Texture2D>,
 }
 
 impl Drop for GrabberWin {
@@ -209,7 +211,6 @@ impl GrabberWin {
 
         if let Err(ref r) = res
         {
-            let r = res.unwrap_err();
             // Error handling from the c++ implementation.
             if r.code() == windows::Win32::Graphics::Dxgi::DXGI_ERROR_ACCESS_LOST
             {
@@ -221,13 +222,13 @@ impl GrabberWin {
             else  if r.code() == windows::Win32::Graphics::Dxgi::DXGI_ERROR_WAIT_TIMEOUT
             {
                 // Well, we timed out... bummer. Release the frame, then return an error.
-                unsafe{self.duplicator.as_ref().expect("Should be true").ReleaseFrame()?;}
+                unsafe{self.duplicator.as_ref().expect("Should have a duplicator.").ReleaseFrame()?;}
                 return Err(windows::core::Error::OK)  // Just to make an error without failure information.
             }
             else 
             {
                 println!("Failed to acquire frame: {:?}", r);
-                unsafe{self.duplicator.as_ref().expect("Should be true").ReleaseFrame()?;}
+                unsafe{self.duplicator.as_ref().expect("Should have a duplicator.").ReleaseFrame()?;}
                 return Err(windows::core::Error::OK)  // Just to make an error without failure information.
             }
         }
@@ -238,46 +239,41 @@ impl GrabberWin {
         // Now, we can do something with textures and all that.
         let texture: Result<ID3D11Texture2D> = pp_desktop_resource.as_ref().expect("Should be resource").cast();
         let frame = texture.expect("Must be a texture.");
-        let mut desc: windows::Win32::Graphics::Direct3D11::D3D11_TEXTURE2D_DESC = Default::default();
-        unsafe{frame.GetDesc(&mut desc)};
-        println!("Frame info: {}x{}", desc.Width, desc.Height);
-        
-/*
-  if ((image_ != nullptr))  // only retrieve data if image exists.
-  {
-    image_->GetDesc(&img_desc);
-  }
+        let mut tex_desc: windows::Win32::Graphics::Direct3D11::D3D11_TEXTURE2D_DESC = Default::default();
+        unsafe{frame.GetDesc(&mut tex_desc)};
+        println!("Frame info: {}x{}", tex_desc.Width, tex_desc.Height);
 
-  if ((image_ == nullptr) || (img_desc.Width != tex_desc.Width) ||
-      (img_desc.Height != tex_desc.Height))  // image is different size.
-  {
-    // Need to make a new image here now...
-    ID3D11Texture2D* img;
-    D3D11_TEXTURE2D_DESC desc = {};
-    desc.Width = tex_desc.Width;
-    desc.Height = tex_desc.Height;
-    desc.Format = tex_desc.Format;
-    desc.MipLevels = 1;
-    desc.ArraySize = 1;
-    desc.SampleDesc.Count = 1;
-    desc.Usage = D3D11_USAGE_STAGING;
-    desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
 
-    hr = device_->CreateTexture2D(&desc, nullptr, &img);
+        let mut img_desc: windows::Win32::Graphics::Direct3D11::D3D11_TEXTURE2D_DESC = Default::default();
+        if let Some(img) = &self.image
+        {
+            unsafe{img.GetDesc(&mut img_desc)};
+        }
 
-    _com_error err(hr);
-    LPCTSTR errMsg = err.ErrorMessage();
-    std::cout << "Image is now: " << img << " Result: " << errMsg << std::endl;
-    image_ = releasing(img);
-  }
+        // Here, we create an texture that will be mapped.
+        if self.image.is_none() || img_desc.Width != tex_desc.Width ||  img_desc.Height != tex_desc.Height
+        {
+            // No mapped image to use yet, or size is different. Create a new image using the device.
+            let mut new_img: windows::Win32::Graphics::Direct3D11::D3D11_TEXTURE2D_DESC = Default::default();
+            new_img.Width = tex_desc.Width;
+            new_img.Height = tex_desc.Height;
+            new_img.Format = tex_desc.Format;
+            new_img.MipLevels = 1; // from C++ side.
+            new_img.ArraySize = 1; // from C++ side.
+            new_img.SampleDesc.Count = 1; // from C++ side.
+            new_img.Usage = windows::Win32::Graphics::Direct3D11::D3D11_USAGE_STAGING;
+            new_img.CPUAccessFlags = windows::Win32::Graphics::Direct3D11::D3D11_CPU_ACCESS_READ;
 
-  // Image is now guaranteed to be good. Copy it.
-  device_context_->CopyResource(image_.get(), frame);
-  duplicator_->ReleaseFrame();
+            self.image = Some(unsafe{self.device.as_ref().expect("Must have device").CreateTexture2D(&new_img, 0 as *const windows::Win32::Graphics::Direct3D11::D3D11_SUBRESOURCE_DATA)?});
+            println!("Made new image");
+        }
 
-  return true;
-*/
-
+        // Finally, we are at the end of all of this and we can actually copy the resource.
+        unsafe
+        {
+            self.device_context.as_ref().expect("Should have a device context.").CopyResource(self.image.as_ref().unwrap(), frame);
+            self.duplicator.as_ref().expect("Should have a duplicator.").ReleaseFrame()?;
+        }
         Ok(())
     }
 }
