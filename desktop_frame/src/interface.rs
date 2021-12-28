@@ -25,7 +25,7 @@ pub trait Image {
     /// Returns a specific pixel's value. The x must be less then width, y less than height.
     fn get_pixel(&self, x: u32, y: u32) -> RGB;
 
-    /// Dump a pnm file to disk.
+    /// Dump a ppm file to disk.
     fn write_ppm(&self, filename: &str) -> std::io::Result<()> {
         use std::fs::File;
         use std::io::prelude::*;
@@ -45,6 +45,51 @@ pub trait Image {
             }
             file.write(v.as_ref())?;
             file.write(b"\n")?;
+        }
+        Ok(())
+    }
+
+    /// Dump a bmp file to disk, mostly because windows can't open ppm.
+    fn write_bmp(&self, filename: &str) -> std::io::Result<()> {
+        // Adopted from https://stackoverflow.com/a/62946358
+        use std::fs::File;
+        use std::io::prelude::*;
+        let mut file = File::create(filename)?;
+        let width = self.get_width();
+        let height = self.get_height();
+        let pad = ((width as i32) * -3 & 3) as u32;
+        let total = 54 + 3 * width * height + pad * height;
+        let head: [u32; 7] = [total, 0, 54, 40, width, height, (24 << 16) | 1];
+        let head_left = [0u32; 13 - 7];
+
+        file.write_all(b"BM")?;
+        file.write_all(
+            &head
+                .iter()
+                .map(|x| x.to_le_bytes())
+                .collect::<Vec<[u8; 4]>>()
+                .concat(),
+        )?;
+        file.write_all(
+            &head_left
+                .iter()
+                .map(|x| x.to_le_bytes())
+                .collect::<Vec<[u8; 4]>>()
+                .concat(),
+        )?;
+        // And now, we go into writing rows.
+        let mut row: Vec<u8> = Default::default();
+        row.resize((width * 3 + pad) as usize, 0);
+        for y in 0..height {
+            // populate the row
+            for x in 0..width {
+                let color = self.get_pixel(x, height - y - 1);
+                row[(x * 3 + 0) as usize] = color.b;
+                row[(x * 3 + 1) as usize] = color.g;
+                row[(x * 3 + 2) as usize] = color.r;
+            }
+            // And write the row.
+            file.write_all(&row)?;
         }
         Ok(())
     }

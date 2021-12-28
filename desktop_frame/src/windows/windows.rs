@@ -319,8 +319,7 @@ impl GrabberWin {
             } else if r.code() == windows::Win32::Graphics::Dxgi::DXGI_ERROR_WAIT_TIMEOUT {
                 // Timeout may happen if no changes occured from the last frame.
                 // This means it is perfectly ok to return the current image.
-                if self.image.is_some()
-                {
+                if self.image.is_some() {
                     return Ok(()); // likely no draw events since last frame, return ok since we have a frame to show.
                 }
                 // Well, we timed out, and we don't have any image... bummer.
