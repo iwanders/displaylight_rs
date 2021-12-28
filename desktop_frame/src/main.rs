@@ -10,6 +10,7 @@ fn main() {
     grabber.prepare_capture(1920, 0, res.width - 1920, res.height);
 
     let res = grabber.capture_image();
+    let res = grabber.capture_image();
     println!("Grabber tried to capture image, succes? {}", res);
     let img = grabber.get_image();
     println!("Grabber writing to temp {:?}", temp_dir());
