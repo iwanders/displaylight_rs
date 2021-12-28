@@ -13,17 +13,36 @@ fn main() {
     println!("Grabber tried to capture image, succes? {}", res);
     let img = grabber.get_image();
     println!("Grabber writing to temp {:?}", temp_dir());
-    img.write_ppm(temp_dir().join("foo.ppm").to_str().expect("path must be ok")).unwrap();
+    img.write_ppm(
+        temp_dir()
+            .join("foo.ppm")
+            .to_str()
+            .expect("path must be ok"),
+    )
+    .unwrap();
     println!("Grabber done writing");
 
-    let z = desktop_frame::read_ppm(temp_dir().join("foo.ppm").to_str().expect("path must be ok")).expect("must be good");
-    z.write_ppm(temp_dir().join("bar.ppm").to_str().expect("path must be ok")).unwrap();
+    let z = desktop_frame::read_ppm(
+        temp_dir()
+            .join("foo.ppm")
+            .to_str()
+            .expect("path must be ok"),
+    )
+    .expect("must be good");
+    z.write_ppm(
+        temp_dir()
+            .join("bar.ppm")
+            .to_str()
+            .expect("path must be ok"),
+    )
+    .unwrap();
 
     println!("Cloning image.");
 
     let z = img.clone();
     println!("Grabber writing to temp.");
-    z.write_ppm(temp_dir().join("z.ppm").to_str().expect("path must be ok")).unwrap();
+    z.write_ppm(temp_dir().join("z.ppm").to_str().expect("path must be ok"))
+        .unwrap();
     println!("Grabber done writing");
     println!("First pixel: {:#?}", img.get_pixel(0, 0));
 }
