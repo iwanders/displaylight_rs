@@ -169,7 +169,7 @@ impl GrabberWin {
             let duplicator = self.duplicator.as_ref().expect("Must have a duplicator now");
             let mut desc: DXGI_OUTDUPL_DESC = DXGI_OUTDUPL_DESC{ModeDesc:DXGI_MODE_DESC{Width: 0, Height: 0, RefreshRate: DXGI_RATIONAL {Numerator: 0, Denominator: 0}, Format: 0, ScanlineOrdering: 0, Scaling: 0}, Rotation: 0, DesktopImageInSystemMemory: windows::Win32::Foundation::BOOL(0)};
             duplicator.GetDesc(&mut desc);
-            println!("Duplicator; {}x{} @ {}/{}, in memory: {}", desc.ModeDesc.Width, desc.ModeDesc.Height, desc.ModeDesc.RefreshRate.Numerator, desc.ModeDesc.RefreshRate.Denominator, desc.DesktopImageInSystemMemory.0);
+            println!("Duplicator: {}x{} @ {}/{}, in memory: {}", desc.ModeDesc.Width, desc.ModeDesc.Height, desc.ModeDesc.RefreshRate.Numerator, desc.ModeDesc.RefreshRate.Denominator, desc.DesktopImageInSystemMemory.0);
 
         }
         Ok(())
@@ -188,6 +188,96 @@ impl GrabberWin {
 
     pub fn capture(&mut self) -> Result<()>
     {
+        // Ok, so, check if we have a duplicator.
+        if self.duplicator.is_none()
+        {
+            // No duplicator, lets ensure we have one, or just fail this capture.
+            self.init_duplicator()?;
+        }
+
+        // Now, we can acquire the next frame.
+        let timeout_in_ms: u32 = 100;
+        let mut frame_info: windows::Win32::Graphics::Dxgi::DXGI_OUTDUPL_FRAME_INFO = Default::default();
+        let mut pp_desktop_resource: Option<IDXGIResource> = None;
+        let res = unsafe {
+            self.duplicator.as_ref().expect("Must have duplicator").AcquireNextFrame(
+                timeout_in_ms,
+                &mut frame_info,
+                &mut pp_desktop_resource,
+            )
+        };
+
+        if let Err(ref r) = res
+        {
+            let r = res.unwrap_err();
+            // Error handling from the c++ implementation.
+            if r.code() == windows::Win32::Graphics::Dxgi::DXGI_ERROR_ACCESS_LOST
+            {
+                // This can happen when the resolution changes, or when we the context changes / full screen application
+                // or a d3d11 instance starts, in that case we have to recreate the duplicator.
+                self.init_duplicator()?;
+                return self.capture();
+            }
+            else  if r.code() == windows::Win32::Graphics::Dxgi::DXGI_ERROR_WAIT_TIMEOUT
+            {
+                // Well, we timed out... bummer. Release the frame, then return an error.
+                unsafe{self.duplicator.as_ref().expect("Should be true").ReleaseFrame()?;}
+                return Err(windows::core::Error::OK)  // Just to make an error without failure information.
+            }
+            else 
+            {
+                println!("Failed to acquire frame: {:?}", r);
+                unsafe{self.duplicator.as_ref().expect("Should be true").ReleaseFrame()?;}
+                return Err(windows::core::Error::OK)  // Just to make an error without failure information.
+            }
+        }
+
+        // Well, we got here, res must be ok.
+        let _ok = res.expect("Should be ok.");
+
+        // Now, we can do something with textures and all that.
+        let texture: Result<ID3D11Texture2D> = pp_desktop_resource.as_ref().expect("Should be resource").cast();
+        let frame = texture.expect("Must be a texture.");
+        let mut desc: windows::Win32::Graphics::Direct3D11::D3D11_TEXTURE2D_DESC = Default::default();
+        unsafe{frame.GetDesc(&mut desc)};
+        println!("Frame info: {}x{}", desc.Width, desc.Height);
+        
+/*
+  if ((image_ != nullptr))  // only retrieve data if image exists.
+  {
+    image_->GetDesc(&img_desc);
+  }
+
+  if ((image_ == nullptr) || (img_desc.Width != tex_desc.Width) ||
+      (img_desc.Height != tex_desc.Height))  // image is different size.
+  {
+    // Need to make a new image here now...
+    ID3D11Texture2D* img;
+    D3D11_TEXTURE2D_DESC desc = {};
+    desc.Width = tex_desc.Width;
+    desc.Height = tex_desc.Height;
+    desc.Format = tex_desc.Format;
+    desc.MipLevels = 1;
+    desc.ArraySize = 1;
+    desc.SampleDesc.Count = 1;
+    desc.Usage = D3D11_USAGE_STAGING;
+    desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+
+    hr = device_->CreateTexture2D(&desc, nullptr, &img);
+
+    _com_error err(hr);
+    LPCTSTR errMsg = err.ErrorMessage();
+    std::cout << "Image is now: " << img << " Result: " << errMsg << std::endl;
+    image_ = releasing(img);
+  }
+
+  // Image is now guaranteed to be good. Copy it.
+  device_context_->CopyResource(image_.get(), frame);
+  duplicator_->ReleaseFrame();
+
+  return true;
+*/
+
         Ok(())
     }
 }
