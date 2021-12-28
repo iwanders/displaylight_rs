@@ -159,6 +159,8 @@ impl GrabberWin {
         // No idea if this is the way...
         unsafe{
             // let output1: &IDXGIOutput1 = std::mem::transmute::<&IDXGIOutput, &IDXGIOutput1>(output);
+            let z = self.adaptor.as_ref().expect("yes").CheckInterfaceSupport(&IDXGIOutput1::IID);  // Oh.
+            println!("z: {:?}", z);
             let output1: Result<IDXGIOutput1> = output.cast();
             let output1 = output1.expect("SHould have succeeded.");
             // let output1 = output.GetParent::<&IDXGIOutput1>().expect("Yes");
