@@ -298,7 +298,7 @@ impl GrabberWin {
         }
 
         // Now, we can acquire the next frame.
-        let timeout_in_ms: u32 = 10;
+        let timeout_in_ms: u32 = 100;
         let mut frame_info: windows::Win32::Graphics::Dxgi::DXGI_OUTDUPL_FRAME_INFO =
             Default::default();
         let mut pp_desktop_resource: Option<IDXGIResource> = None;
@@ -326,6 +326,7 @@ impl GrabberWin {
                 // Well, we timed out, and we don't have any image... bummer.
                 return Err(windows::core::Error::OK); // Just to make an error without failure information.
             } else {
+                println!("Unhandled error!: {:?}", r);
                 unsafe {
                     self.duplicator
                         .as_ref()
@@ -444,10 +445,6 @@ impl GrabberWin {
 impl Grabber for GrabberWin {
     fn capture_image(&mut self) -> bool {
         let res = GrabberWin::capture(self);
-        if res.is_err()
-        {
-            println!("Failed!: {:?}", res.as_ref().unwrap_err());
-        }
         return res.is_ok();
     }
     fn get_image(&mut self) -> Box<dyn Image> {

@@ -9,8 +9,12 @@ fn main() {
     println!("Grabber reports resolution of: {:?}", res);
     grabber.prepare_capture(1920, 0, res.width - 1920, res.height);
 
-
-    let res = grabber.capture_image();
+    let mut res = grabber.capture_image();
+    while !res
+    {
+        res = grabber.capture_image();
+    }
+    
     println!("Grabber tried to capture image, succes? {}", res);
     let img = grabber.get_image();
     println!("Grabber writing to temp {:?}", temp_dir());
@@ -48,7 +52,7 @@ fn main() {
     println!("First pixel: {:#?}", img.get_pixel(0, 0));
     println!("last pixel: {:#?}", img.get_pixel(img.get_width() -1 , img.get_height() -1 ));
 
-    for _i in 0..10
+    for _i in 0..2
     {
         let res = grabber.capture_image();
         println!("Grabber tried to capture image, succes? {}", res);
