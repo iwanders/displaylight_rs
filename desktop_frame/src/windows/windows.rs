@@ -9,7 +9,7 @@ use windows::{
 };
 
 struct ImageWin {
-    image: ID3D11Texture2D,
+    _image: ID3D11Texture2D,
     mapped: windows::Win32::Graphics::Direct3D11::D3D11_MAPPED_SUBRESOURCE,
     width: u32,
     height: u32,
@@ -52,7 +52,7 @@ impl ImageWin {
         ImageWin {
             width,
             height,
-            image: texture,
+            _image: texture,
             mapped,
         }
     }
@@ -298,7 +298,7 @@ impl GrabberWin {
         }
 
         // Now, we can acquire the next frame.
-        let timeout_in_ms: u32 = 100;
+        let timeout_in_ms: u32 = 10;
         let mut frame_info: windows::Win32::Graphics::Dxgi::DXGI_OUTDUPL_FRAME_INFO =
             Default::default();
         let mut pp_desktop_resource: Option<IDXGIResource> = None;
@@ -317,16 +317,15 @@ impl GrabberWin {
                 self.init_duplicator()?;
                 return self.capture();
             } else if r.code() == windows::Win32::Graphics::Dxgi::DXGI_ERROR_WAIT_TIMEOUT {
-                // Well, we timed out... bummer. Release the frame, then return an error.
-                unsafe {
-                    self.duplicator
-                        .as_ref()
-                        .expect("Should have a duplicator.")
-                        .ReleaseFrame()?;
+                // Timeout may happen if no changes occured from the last frame.
+                // This means it is perfectly ok to return the current image.
+                if self.image.is_some()
+                {
+                    return Ok(()); // likely no draw events since last frame, return ok since we have a frame to show.
                 }
+                // Well, we timed out, and we don't have any image... bummer.
                 return Err(windows::core::Error::OK); // Just to make an error without failure information.
             } else {
-                println!("Failed to acquire frame: {:?}", r);
                 unsafe {
                     self.duplicator
                         .as_ref()
@@ -425,7 +424,7 @@ impl GrabberWin {
         new_img.Usage = windows::Win32::Graphics::Direct3D11::D3D11_USAGE_STAGING;
         new_img.CPUAccessFlags = windows::Win32::Graphics::Direct3D11::D3D11_CPU_ACCESS_READ;
         let device = self.device.as_ref().expect("Must have a device");
-        let mut new_texture = unsafe {
+        let new_texture = unsafe {
             device.CreateTexture2D(
                 &new_img,
                 0 as *const windows::Win32::Graphics::Direct3D11::D3D11_SUBRESOURCE_DATA,
@@ -445,6 +444,10 @@ impl GrabberWin {
 impl Grabber for GrabberWin {
     fn capture_image(&mut self) -> bool {
         let res = GrabberWin::capture(self);
+        if res.is_err()
+        {
+            println!("Failed!: {:?}", res.as_ref().unwrap_err());
+        }
         return res.is_ok();
     }
     fn get_image(&mut self) -> Box<dyn Image> {
