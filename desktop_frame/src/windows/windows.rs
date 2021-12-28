@@ -8,6 +8,15 @@ use windows::{
     Win32::Graphics::Dxgi::Common::*, Win32::Graphics::Dxgi::*,
 };
 
+use windows::{
+    core::*, Win32::Foundation::*, Win32::Graphics::Direct3D::Fxc::*, Win32::Graphics::Direct3D::*,
+    Win32::Graphics::Direct3D12::*, Win32::Graphics::Dxgi::Common::*, Win32::Graphics::Dxgi::*,
+    Win32::System::LibraryLoader::*,
+Win32::System::Com::*,
+ Win32::Foundation::*, 
+};
+
+
 struct ImageWin {}
 
 impl ImageWin {}
@@ -24,14 +33,6 @@ impl Image for ImageWin {
     }
 }
 
-/*
-From the C++ project.
-  initAdapter();
-  initOutput();
-  initDevice();
-  initDuplicator();
-
-*/
 
 // from  https://github.com/microsoft/windows-samples-rs/blob/5d67b33e7115ec1dd4f8448301bf6ce794c93b5f/direct3d12/src/main.rs#L204-L234.
 fn get_hardware_adapter(factory: &IDXGIFactory4) -> Result<IDXGIAdapter1> {
@@ -96,6 +97,8 @@ fn create_device() -> Result<(IDXGIFactory4, ID3D12Device)> {
 struct GrabberWin {
     adaptor: Option<IDXGIAdapter1>,
     output: Option<IDXGIOutput>,
+    device: Option<ID3D12Device>,
+    duplicator: Option<IDXGIOutputDuplication>,
 }
 
 impl Drop for GrabberWin {
@@ -114,6 +117,8 @@ impl GrabberWin {
 
     fn init_output(&mut self, desired: u32) {
         // Now, we break from the example.
+        // Obtain the video outputs used by this adaptor.
+        // Is the primary screen always the zeroth index??
         let adaptor = self.adaptor.as_ref().expect("Must have an adaptor.");
         let mut output_index: u32 = 0;
         unsafe {
@@ -139,10 +144,87 @@ impl GrabberWin {
         }
     }
 
+    fn init_device(&mut self)
+    {
+        // From https://github.com/microsoft/windows-samples-rs/blob/5d67b33e7115ec1dd4f8448301bf6ce794c93b5f/direct3d12/src/main.rs#L562
+        let level_used = windows::Win32::Graphics::Direct3D::D3D_FEATURE_LEVEL_11_0;
+        unsafe { D3D12CreateDevice(self.adaptor.as_ref().expect("Must have adaptor"), level_used, &mut self.device) }.expect("Should be able to create device.");
+    }
+
+    fn init_duplicator(&mut self)
+    {
+        let output = self.output.as_ref().expect("Must have an output");
+        self.duplicator = None;
+        // let output1: &IDXGIOutput1  = output.cast().expect("Should be castable.");
+        // No idea if this is the way...
+        unsafe{
+            // let output1: &IDXGIOutput1 = std::mem::transmute::<&IDXGIOutput, &IDXGIOutput1>(output);
+            let output1: Result<IDXGIOutput1> = output.cast();
+            let output1 = output1.expect("SHould have succeeded.");
+            // let output1 = output.GetParent::<&IDXGIOutput1>().expect("Yes");
+            self.duplicator = Some(output1.DuplicateOutput(self.device.as_ref().expect("Must have a device")).expect("Should be able to make the duplicator."));
+        }
+        
+        // self.duplicator_output = None;
+
+        // output.DuplicateOutput(self.device.as_ref().unwrap("Must have a device",  &mut self.duplicator)).expect("Should be able to make duplicator");
+        // let output1: &IDXGIOutput1 =  output.into();
+        /*
+          // need to convert output to output1.
+          IDXGIOutput1* output1;
+
+          HRESULT hr;
+
+          hr = adapter_output_->QueryInterface(__uuidof(IDXGIOutput1), (void**)&output1);
+          if (FAILED(hr))
+            throw std::runtime_error("Failed to query IDXGIOutput1");
+
+          // If lost access, we must release the previous duplicator and make a new one.
+          duplicator_.reset();
+          duplicator_output_.reset();
+
+          IDXGIOutputDuplication* z;
+          hr = output1->DuplicateOutput(device_.get(), &z);
+
+          if (E_ACCESSDENIED == hr)
+          {
+            // full screen security prompt.
+            return false;
+          }
+          if (hr == DXGI_ERROR_SESSION_DISCONNECTED)
+          {
+            // seems bad?
+            return false;
+          }
+
+          if (FAILED(hr))
+          {
+            throw std::runtime_error("Failed to duplicate output");
+          }
+
+          duplicator_ = releasing(z);
+          duplicator_output_ = releasing(output1);
+
+          // DXGI_OUTDUPL_DESC out_desc;
+          // duplicator_->GetDesc(&out_desc);
+          // If the data was already in memory we could map it directly... but it is not.
+          // std::cout << "Already in mem: " << out_desc.DesktopImageInSystemMemory << " " << std::endl;
+        */
+    }
+
     pub fn new() -> GrabberWin {
+        /*
+        From the C++ project.
+          initAdapter();
+          initOutput();
+          initDevice();
+          initDuplicator();
+        */
         let mut n: GrabberWin = Default::default();
         n.init_adaptor();
         n.init_output(0);
+        n.init_device();
+        n.init_duplicator();
         n
     }
     pub fn prepare(&mut self, x: u32, y: u32, width: u32, height: u32) -> bool {
