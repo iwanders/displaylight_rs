@@ -4,15 +4,11 @@ use windows;
 // This uses the desktop duplication api.
 // https://docs.microsoft.com/en-us/windows/win32/direct3ddxgi/desktop-dup-api
 use windows::{
-    core::Result, Win32::Graphics::Direct3D::*, Win32::Graphics::Direct3D11::*,
+    core::*, core::Result, Win32::Graphics::Direct3D11::*,
     Win32::Graphics::Dxgi::Common::*, Win32::Graphics::Dxgi::*,
 };
 
-use windows::{
-    core::*, Win32::Foundation::*, Win32::Foundation::*, Win32::Graphics::Direct3D::Fxc::*,
-    Win32::Graphics::Direct3D::*, Win32::Graphics::Direct3D11::*, Win32::Graphics::Dxgi::Common::*,
-    Win32::Graphics::Dxgi::*, Win32::System::Com::*, Win32::System::LibraryLoader::*,
-};
+
 
 struct ImageWin {}
 
@@ -25,7 +21,7 @@ impl Image for ImageWin {
     fn get_height(&self) -> u32 {
         0
     }
-    fn get_pixel(&self, x: u32, y: u32) -> RGB {
+    fn get_pixel(&self, _x: u32, _y: u32) -> RGB {
         RGB { r: 0, g: 0, b: 0 }
     }
 }
@@ -88,7 +84,7 @@ impl GrabberWin {
             let create_flags = windows::Win32::Graphics::Direct3D11::D3D11_CREATE_DEVICE_BGRA_SUPPORT
                                | windows::Win32::Graphics::Direct3D11::D3D11_CREATE_DEVICE_DEBUG;
             let mut level_used = windows::Win32::Graphics::Direct3D::D3D_FEATURE_LEVEL_9_3;
-            let featureLevels = [
+            let feature_levels = [
                 windows::Win32::Graphics::Direct3D::D3D_FEATURE_LEVEL_11_0,
                 windows::Win32::Graphics::Direct3D::D3D_FEATURE_LEVEL_10_1,
                 windows::Win32::Graphics::Direct3D::D3D_FEATURE_LEVEL_10_0,
@@ -101,8 +97,8 @@ impl GrabberWin {
                     windows::Win32::Graphics::Direct3D::D3D_DRIVER_TYPE_UNKNOWN, // drivertype: D3D_DRIVER_TYPE, 
                     0, // software: Param2, 
                     create_flags, // flags: D3D11_CREATE_DEVICE_FLAG, 
-                    &featureLevels as *const windows::Win32::Graphics::Direct3D::D3D_FEATURE_LEVEL, // pfeaturelevels: *const D3D_FEATURE_LEVEL, 
-                    featureLevels.len() as u32, // featurelevels: u32, 
+                    &feature_levels as *const windows::Win32::Graphics::Direct3D::D3D_FEATURE_LEVEL, // pfeaturelevels: *const D3D_FEATURE_LEVEL, 
+                    feature_levels.len() as u32, // featurelevels: u32, 
                     sdk_version, // sdkversion: u32, 
                     &mut self.device, // ppdevice: *mut Option<ID3D11Device>, 
                     &mut level_used,// pfeaturelevel: *mut D3D_FEATURE_LEVEL, 
@@ -177,75 +173,29 @@ impl GrabberWin {
 
         }
         Ok(())
-        // self.duplicator_output = None;
-
-        // output.DuplicateOutput(self.device.as_ref().unwrap("Must have a device",  &mut self.duplicator)).expect("Should be able to make duplicator");
-        // let output1: &IDXGIOutput1 =  output.into();
-        /*
-          // need to convert output to output1.
-          IDXGIOutput1* output1;
-
-          HRESULT hr;
-
-          hr = adapter_output_->QueryInterface(__uuidof(IDXGIOutput1), (void**)&output1);
-          if (FAILED(hr))
-            throw std::runtime_error("Failed to query IDXGIOutput1");
-
-          // If lost access, we must release the previous duplicator and make a new one.
-          duplicator_.reset();
-          duplicator_output_.reset();
-
-          IDXGIOutputDuplication* z;
-          hr = output1->DuplicateOutput(device_.get(), &z);
-
-          if (E_ACCESSDENIED == hr)
-          {
-            // full screen security prompt.
-            return false;
-          }
-          if (hr == DXGI_ERROR_SESSION_DISCONNECTED)
-          {
-            // seems bad?
-            return false;
-          }
-
-          if (FAILED(hr))
-          {
-            throw std::runtime_error("Failed to duplicate output");
-          }
-
-          duplicator_ = releasing(z);
-          duplicator_output_ = releasing(output1);
-
-          // DXGI_OUTDUPL_DESC out_desc;
-          // duplicator_->GetDesc(&out_desc);
-          // If the data was already in memory we could map it directly... but it is not.
-          // std::cout << "Already in mem: " << out_desc.DesktopImageInSystemMemory << " " << std::endl;
-        */
     }
 
     pub fn new() -> GrabberWin {
-        /*
-        From the C++ project.
-          initAdapter();
-          initOutput();
-          initDevice();
-          initDuplicator();
-        */
         let mut n: GrabberWin = Default::default();
         n.init_adaptor().expect("Should have an adaptor and d3d11 device now.");
         n.init_output(0).expect("Should be able to get the output.");
         n.init_duplicator().expect("Should be able to get the duplicator.");
         n
     }
-    pub fn prepare(&mut self, x: u32, y: u32, width: u32, height: u32) -> bool {
+    pub fn prepare(&mut self, _x: u32, _y: u32, _width: u32, _height: u32) -> bool {
         true
+    }
+
+    pub fn capture(&mut self) -> Result<()>
+    {
+        Ok(())
     }
 }
 
 impl Grabber for GrabberWin {
     fn capture_image(&mut self) -> bool {
-        false
+        let res = GrabberWin::capture(self);
+        return res.is_ok();
     }
     fn get_image(&mut self) -> Box<dyn Image> {
         Box::<ImageWin>::new(ImageWin {})
