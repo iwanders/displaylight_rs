@@ -5,3 +5,6 @@ members = [
     "displaylight"
 ]
 
+
+[profile.release]
+opt-level = 3

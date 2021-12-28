@@ -5,6 +5,3 @@ edition = "2021"
 
 [dependencies]
 desktop_frame = { path = "../desktop_frame" }
-
-[profile.release]
-opt-level = 3

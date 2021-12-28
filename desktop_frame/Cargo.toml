@@ -5,6 +5,3 @@ edition = "2021"
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2.112"
-
-[profile.release]
-opt-level = 3

@@ -4,7 +4,7 @@ pub mod raster_image;
 use crate::interface::*;
 
 #[cfg_attr(target_os = "linux", path = "./linux/linux.rs")]
-#[cfg_attr(windows, path = "windows.rs")]
+#[cfg_attr(target_os="windows", path = "./windows/windows.rs")]
 mod backend;
 
 /// Get a new instance of the desktop frame grabber for this platform.
@@ -17,11 +17,11 @@ pub fn read_ppm(filename: &str) -> Result<Box<dyn Image>, Box<dyn std::error::Er
     println!("zzz: {:?}", "dsfsdf");
     use std::fs::File;
     let file = File::open(filename)?;
-    use std::io::{BufRead, BufReader, Error, ErrorKind, Read};
+    use std::io::{BufRead, BufReader};
     let br = BufReader::new(file);
     let mut lines = br.lines();
-    let mut width: u32 = 0;
-    let mut height: u32 = 0;
+    let width: u32;
+    let height: u32;
     fn make_error(v: &str) -> Box<dyn std::error::Error> {
         Box::new(std::io::Error::new(std::io::ErrorKind::Other, v))
     }
@@ -69,7 +69,7 @@ pub fn read_ppm(filename: &str) -> Result<Box<dyn Image>, Box<dyn std::error::Er
         }
 
         // Finally, we can convert the bytes.
-        for i in (0..width as usize) {
+        for i in 0..width as usize {
             let r = u8::try_from(numbers[i * 3 + 0])?;
             let g = u8::try_from(numbers[i * 3 + 1])?;
             let b = u8::try_from(numbers[i * 3 + 2])?;
