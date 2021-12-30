@@ -55,7 +55,7 @@ struct Config
 };
 */
 #[repr(C, packed)]
-#[derive(Default, Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub struct Config {
     /// If there has been activity, decay won't take place for decay_time_delay_ms milliseconds.
     pub decay_time_delay_ms: u32,
@@ -73,6 +73,22 @@ pub struct Config {
     /// Gamma for the blue channel.
     pub gamma_b: f32,
 }
+impl Default for Config
+{
+    fn default() -> Self
+    {
+        // Defaults copied from the firmware.
+        Config{
+            decay_time_delay_ms: 1000,
+            decay_interval_us: 1000,
+            decay_amount: 1,
+            gamma_r: 1.0,
+            gamma_g: 1.3,
+            gamma_b: 1.6,
+        }
+    }
+}
+
 
 /*
 
@@ -89,7 +105,7 @@ struct ColorData
 const LEDS_PER_MESSAGE: usize = 19;
 #[repr(C, packed)]
 #[derive(Default, Clone, Copy, Debug)]
-struct ColorData {
+pub struct ColorData {
     pub offset: u16,
     pub settings: u8,
     pub color: [RGB; LEDS_PER_MESSAGE],
@@ -115,9 +131,9 @@ struct Message
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub union Payload {
-    color: ColorData,
-    config: Config,
-    raw: [u8; 60],
+    pub color: ColorData,
+    pub config: Config,
+    pub raw: [u8; 60],
 }
 impl Default for Payload {
     fn default() -> Self {
@@ -214,11 +230,10 @@ mod tests {
         msg.payload.color.offset = 0x0102;
         msg.payload.color.settings = 0xAB;
         let mut colors: [RGB; ColorData::LEDS_PER_MESSAGE] = Default::default();
-            for c in 0..ColorData::LEDS_PER_MESSAGE {
-                colors[c].r = c as u8 * 3 + 0;
-                colors[c].g = c as u8 * 3 + 1;
-                colors[c].b = c as u8 * 3 + 2;
-            
+        for c in 0..ColorData::LEDS_PER_MESSAGE {
+            colors[c].r = c as u8 * 3 + 0;
+            colors[c].g = c as u8 * 3 + 1;
+            colors[c].b = c as u8 * 3 + 2;
         }
         msg.payload.color.color = colors;
 
