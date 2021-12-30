@@ -31,6 +31,14 @@ impl RasterImage {
         res
     }
 
+    pub fn fill_rectangle(&mut self, x_min: u32, x_max: u32, y_min: u32, y_max: u32, color: RGB) {
+        for y in y_min..y_max{
+            for x in x_min..x_max{
+                self.set_pixel(x, y, color);
+            }
+        }
+    }
+
     pub fn from_2d_vec(data: &Vec<Vec<RGB>>) -> RasterImage {
         RasterImage {
             data: data.to_vec(),
@@ -44,6 +52,25 @@ impl RasterImage {
             panic!("Trying to set out of bounds ({}, {})", x, y);
         }
         self.data[y as usize][x as usize] = color;
+    }
+
+    // Ugly gradient for visual inspection.
+    pub fn set_gradient(&mut self, x_min: u32, x_max: u32, y_min: u32, y_max: u32) {
+        let r_step = 255.0 / (x_max - x_min) as f64;
+        let g_step = 255.0 / (y_max - y_min) as f64;
+        for y in y_min..y_max {
+            for x in x_min..x_max {
+                self.set_pixel(
+                    x,
+                    y,
+                    RGB {
+                        r: (((x - x_min) as f64 * r_step) as u32 % 256) as u8,
+                        g: (((y - y_min) as f64 * g_step) as u32 % 256) as u8,
+                        b: 128,
+                    },
+                );
+            }
+        }
     }
 }
 
@@ -59,5 +86,40 @@ impl Image for RasterImage {
     }
     fn get_pixel(&self, x: u32, y: u32) -> RGB {
         return self.data[y as usize][x as usize];
+    }
+}
+
+// Mostly for testing...
+pub fn make_dummy_gradient() -> RasterImage
+{
+    let mut img = RasterImage::filled(1920, 1080, RGB { r: 0, g: 0, b: 0 });
+    img.set_gradient(200, 1920 - 200, 0, 1080);
+    img
+}
+
+#[cfg(test)]
+pub mod tests {
+    use super::*;
+    use std::env::temp_dir;
+
+    #[test]
+    fn test_draw_gradient() {
+        let mut img = RasterImage::filled(100, 100, RGB { r: 0, g: 0, b: 0 });
+        img.set_gradient(10, 90, 20, 80);
+        img.write_bmp(
+            temp_dir()
+                .join("gradient.bmp")
+                .to_str()
+                .expect("path must be ok"),
+        )
+        .unwrap();
+        let img = make_dummy_gradient();
+        img.write_bmp(
+            temp_dir()
+                .join("gradient_big.bmp")
+                .to_str()
+                .expect("path must be ok"),
+        )
+        .unwrap();
     }
 }

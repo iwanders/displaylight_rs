@@ -2,8 +2,8 @@
 // Analyser does bisection to find the black borders.
 // Then sample in each led's rectangle.
 
+use crate::rectangle::Rectangle;
 use desktop_frame::{Image, RGB};
-use crate::rectangle::{Rectangle};
 
 // This bespoke bisection procedure to find the presumably single transition in a 1d search.
 fn bisect(f: &dyn Fn(u32) -> bool, min: &mut u32, max: &mut u32) {

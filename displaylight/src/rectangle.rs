@@ -1,4 +1,3 @@
-
 #[derive(Debug, Default)]
 pub struct Rectangle {
     pub x_min: u32,
