@@ -1,11 +1,17 @@
 use crate::raster_image::RasterImage;
 
-#[derive(Debug, Default, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Eq, PartialEq)]
 /// Struct to represent a single pixel.
 pub struct RGB {
     pub r: u8,
     pub g: u8,
     pub b: u8,
+}
+
+impl RGB {
+    pub fn black() -> RGB {
+        RGB { r: 0, g: 0, b: 0 }
+    }
 }
 
 #[derive(Debug, Default, Copy, Clone)]

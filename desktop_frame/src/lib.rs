@@ -1,6 +1,8 @@
 pub mod interface;
 pub mod raster_image;
 
+pub use interface::{Grabber, Image, RGB};
+
 use crate::interface::*;
 
 #[cfg_attr(target_os = "linux", path = "./linux/linux.rs")]

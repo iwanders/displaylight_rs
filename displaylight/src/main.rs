@@ -1,3 +1,2 @@
 use displaylight;
-fn main() {
-}
+fn main() {}

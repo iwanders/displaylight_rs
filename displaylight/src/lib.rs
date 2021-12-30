@@ -1,1 +1,1 @@
-mod analyzer;
+mod border_detection;
