@@ -40,9 +40,9 @@ pub fn find_borders(image: &dyn Image, bisections_per_side: u32) -> Rectangle {
     let bounds = (0..bisections_per_side)
         .map(|i| {
             let mut bisection_res: [u32; 4] = [0, image.get_width() - 1, 0, image.get_height() - 1];
-            let mut tmp = 0u32;
-            let mut mid_x = (image.get_width() - 1) / (bisections_per_side + 1) * (i + 1);
-            let mut mid_y = (image.get_height() - 1) / (bisections_per_side + 1) * (i + 1);
+            let mut tmp;
+            let mid_x = (image.get_width() - 1) / (bisections_per_side + 1) * (i + 1);
+            let mid_y = (image.get_height() - 1) / (bisections_per_side + 1) * (i + 1);
 
             // Perform left bound, find x_min
             tmp = mid_x;
@@ -76,7 +76,7 @@ pub fn find_borders(image: &dyn Image, bisections_per_side: u32) -> Rectangle {
                 &mut bisection_res[3],
             );
 
-            println!("Bisection res: {:?}", bisection_res);
+            // println!("Bisection res: {:?}", bisection_res);
             return bisection_res;
         })
         .reduce(|a, b| {
@@ -155,7 +155,7 @@ mod tests {
             }
         }
         let b = find_borders(&img, 6);
-        img.write_bmp("/tmp/foo.bmp");
+        // img.write_bmp("/tmp/foo.bmp");
 
         assert_eq!(b.bottom_left.x, 29);
         assert_eq!(b.bottom_left.y, 19);
