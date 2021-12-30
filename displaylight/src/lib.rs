@@ -1,7 +1,7 @@
-mod border_detection;
-mod rectangle;
-mod sampler;
-mod zones;
+pub mod border_detection;
+pub mod rectangle;
+pub mod sampler;
+pub mod zones;
 
 #[cfg(test)]
 mod tests {
