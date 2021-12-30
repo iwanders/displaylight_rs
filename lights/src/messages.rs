@@ -94,11 +94,10 @@ struct ColorData {
     pub settings: u8,
     pub color: [RGB; LEDS_PER_MESSAGE],
 }
-impl ColorData
-{
-    pub const SETTINGS_SHOW_AFTER:u8 = 1u8 << 0;
-    pub const SETTINGS_SET_ALL:u8 = 1u8 << 1;
-    pub const LEDS_PER_MESSAGE:usize = LEDS_PER_MESSAGE;
+impl ColorData {
+    pub const SETTINGS_SHOW_AFTER: u8 = 1u8 << 0;
+    pub const SETTINGS_SET_ALL: u8 = 1u8 << 1;
+    pub const LEDS_PER_MESSAGE: usize = LEDS_PER_MESSAGE;
 }
 
 /*
@@ -151,12 +150,12 @@ impl Debug for Message {
             MsgType::CONFIG => f
                 .debug_struct("Message")
                 .field("msg_type", &"config".to_owned())
-                .field("config", unsafe{&self.payload.config})
+                .field("config", unsafe { &self.payload.config })
                 .finish(),
             MsgType::COLOR => f
                 .debug_struct("Message")
                 .field("msg_type", &"color".to_owned())
-                .field("config", unsafe{&self.payload.color})
+                .field("config", unsafe { &self.payload.color })
                 .finish(),
             _ => f
                 .debug_struct("Message")
@@ -188,7 +187,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_full() {
+    fn test_config() {
         let mut m: Message = Default::default();
         m.msg_type = MsgType::CONFIG;
         m.payload.config.decay_time_delay_ms = 0xdeadbeef;
@@ -198,8 +197,37 @@ mod tests {
         m.payload.config.gamma_g = 1.0;
         m.payload.config.gamma_b = 0.0;
         let b = m.to_bytes();
-        let expected = [1u8, 0, 0, 0, 239, 190, 173, 222, 4, 3, 2, 1, 244, 243, 242, 241, 59, 170, 170, 62, 0, 0, 128, 63, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+        let expected = [
+            1u8, 0, 0, 0, 239, 190, 173, 222, 4, 3, 2, 1, 244, 243, 242, 241, 59, 170, 170, 62, 0,
+            0, 128, 63, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        ];
         println!("{:?}", m);
+        println!("{:?}", b);
+        assert_eq!(b, expected);
+    }
+
+    #[test]
+    fn test_color() {
+        let mut msg: Message = Default::default();
+        msg.msg_type = MsgType::COLOR;
+        msg.payload.color.offset = 0x0102;
+        msg.payload.color.settings = 0xAB;
+        unsafe {
+            for c in 0..msg.payload.color.color.len() {
+                msg.payload.color.color[c].r = c as u8 * 3 + 0;
+                msg.payload.color.color[c].g = c as u8 * 3 + 1;
+                msg.payload.color.color[c].b = c as u8 * 3 + 2;
+            }
+        }
+
+        let b = msg.to_bytes();
+        let expected = [
+            2u8, 0, 0, 0, 2, 1, 171, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17,
+            18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39,
+            40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56,
+        ];
+        println!("{:?}", msg);
         println!("{:?}", b);
         assert_eq!(b, expected);
     }
