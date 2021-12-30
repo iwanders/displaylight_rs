@@ -144,12 +144,19 @@ mod tests {
                 );
             }
         }
-        let b = find_borders(&img, 6);
-        // img.write_bmp("/tmp/foo.bmp");
+        let b = find_borders(&img, 5);
 
         assert_eq!(b.x_min, 29);
         assert_eq!(b.y_min, 19);
         assert_eq!(b.x_max, 80);
         assert_eq!(b.y_max, 70);
+    }
+    #[test]
+    fn test_y_min_beyond_y_max() {
+        let img = desktop_frame::read_ppm("/tmp/bad.ppm").expect("Load should succeed.");
+        let b = find_borders(&*img, 5);
+
+        assert!(b.x_min <= b.x_max);
+        assert!(b.y_min <= b.y_max);
     }
 }

@@ -73,12 +73,10 @@ pub struct Config {
     /// Gamma for the blue channel.
     pub gamma_b: f32,
 }
-impl Default for Config
-{
-    fn default() -> Self
-    {
+impl Default for Config {
+    fn default() -> Self {
         // Defaults copied from the firmware.
-        Config{
+        Config {
             decay_time_delay_ms: 1000,
             decay_interval_us: 1000,
             decay_amount: 1,
@@ -88,7 +86,6 @@ impl Default for Config
         }
     }
 }
-
 
 /*
 

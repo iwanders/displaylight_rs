@@ -32,8 +32,8 @@ impl RasterImage {
     }
 
     pub fn fill_rectangle(&mut self, x_min: u32, x_max: u32, y_min: u32, y_max: u32, color: RGB) {
-        for y in y_min..y_max{
-            for x in x_min..x_max{
+        for y in y_min..y_max {
+            for x in x_min..x_max {
                 self.set_pixel(x, y, color);
             }
         }
@@ -90,8 +90,7 @@ impl Image for RasterImage {
 }
 
 // Mostly for testing...
-pub fn make_dummy_gradient() -> RasterImage
-{
+pub fn make_dummy_gradient() -> RasterImage {
     let mut img = RasterImage::filled(1920, 1080, RGB { r: 0, g: 0, b: 0 });
     img.set_gradient(200, 1920 - 200, 0, 1080);
     img

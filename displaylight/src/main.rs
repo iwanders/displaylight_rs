@@ -1,10 +1,9 @@
-use displaylight::{zones, sampler, border_detection};
+use displaylight::{border_detection, sampler, zones};
 use lights;
 
-use std::{thread, time};
 use std::error::Error;
+use std::{thread, time};
 fn main() -> Result<(), Box<dyn Error>> {
-
     let mut grabber = desktop_frame::get_grabber();
 
     let resolution = grabber.get_resolution();
@@ -16,11 +15,9 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     const MAX_LEDS: usize = 228;
 
-    loop
-    {
+    loop {
         let res = grabber.capture_image();
-        if (!res)
-        {
+        if (!res) {
             continue;
         }
         // Then, grab the image.
@@ -28,9 +25,14 @@ fn main() -> Result<(), Box<dyn Error>> {
 
         // Detect the black borders
         let borders = border_detection::find_borders(&*img, 5);
-
+        println!("Borders: {:?}", borders);
+        if (borders.y_min >= borders.y_max) {
+            img.write_ppm("/tmp/bad.ppm");
+        }
         // With the edges known, we can make the zones.
+        // Zones goes bad with Rectangle { x_min: 622, x_max: 1353, y_min: 574, y_max: 384 }
         let zones = zones::Zones::make_zones(&borders, 200, 200);
+        // println!("zones: {:?}", zones);
         assert_eq!(zones.len(), MAX_LEDS);
 
         // With the zones known, we can create the sampler.
@@ -42,8 +44,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
         // Finally, create the lights::RGB array.
         let mut leds = [lights::RGB::default(); MAX_LEDS];
-        for i in 0..MAX_LEDS
-        {
+        for i in 0..MAX_LEDS {
             leds[i].r = values[i].r;
             leds[i].g = values[i].g;
             leds[i].b = values[i].b;
@@ -53,7 +54,4 @@ fn main() -> Result<(), Box<dyn Error>> {
     }
 
     Ok(())
-
-
-
 }
