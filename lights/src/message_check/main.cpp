@@ -43,7 +43,7 @@ void print_config()
   msg.config.decay_amount = 0xF1F2F3F4;
   msg.config.gamma_r = 0.33333;
   msg.config.gamma_g = 1.0;
-  msg.config.gamma_b = 0.0;
+  msg.config.gamma_b = 0.6;
   std::cout << hexdump(msg) << std::endl;
 }
 

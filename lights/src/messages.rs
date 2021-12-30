@@ -195,12 +195,12 @@ mod tests {
         m.payload.config.decay_amount = 0xF1F2F3F4;
         m.payload.config.gamma_r = 0.33333;
         m.payload.config.gamma_g = 1.0;
-        m.payload.config.gamma_b = 0.0;
+        m.payload.config.gamma_b = 0.6;
         let b = m.to_bytes();
         let expected = [
             1u8, 0, 0, 0, 239, 190, 173, 222, 4, 3, 2, 1, 244, 243, 242, 241, 59, 170, 170, 62, 0,
-            0, 128, 63, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 128, 63, 154, 153, 25, 63, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         ];
         println!("{:?}", m);
         println!("{:?}", b);
@@ -213,13 +213,14 @@ mod tests {
         msg.msg_type = MsgType::COLOR;
         msg.payload.color.offset = 0x0102;
         msg.payload.color.settings = 0xAB;
-        unsafe {
-            for c in 0..msg.payload.color.color.len() {
-                msg.payload.color.color[c].r = c as u8 * 3 + 0;
-                msg.payload.color.color[c].g = c as u8 * 3 + 1;
-                msg.payload.color.color[c].b = c as u8 * 3 + 2;
-            }
+        let mut colors: [RGB; ColorData::LEDS_PER_MESSAGE] = Default::default();
+            for c in 0..ColorData::LEDS_PER_MESSAGE {
+                colors[c].r = c as u8 * 3 + 0;
+                colors[c].g = c as u8 * 3 + 1;
+                colors[c].b = c as u8 * 3 + 2;
+            
         }
+        msg.payload.color.color = colors;
 
         let b = msg.to_bytes();
         let expected = [
