@@ -5,3 +5,4 @@ edition = "2021"
 
 [dependencies]
 desktop_frame = { path = "../desktop_frame" }
+clap = "2.34.0"

@@ -3,17 +3,7 @@
 // Then sample in each led's rectangle.
 
 use desktop_frame::{Image, RGB};
-
-#[derive(Debug, Default)]
-pub struct Point {
-    pub x: u32,
-    pub y: u32,
-}
-#[derive(Debug, Default)]
-pub struct Rectangle {
-    pub bottom_left: Point,
-    pub top_right: Point,
-}
+use crate::rectangle::{Rectangle};
 
 // This bespoke bisection procedure to find the presumably single transition in a 1d search.
 fn bisect(f: &dyn Fn(u32) -> bool, min: &mut u32, max: &mut u32) {
@@ -89,10 +79,10 @@ pub fn find_borders(image: &dyn Image, bisections_per_side: u32) -> Rectangle {
         });
 
     let bounds = bounds.expect("Will always have a result.");
-    b.bottom_left.x = bounds[0];
-    b.top_right.x = bounds[1];
-    b.bottom_left.y = bounds[2];
-    b.top_right.y = bounds[3];
+    b.x_min = bounds[0];
+    b.x_max = bounds[1];
+    b.y_min = bounds[2];
+    b.y_max = bounds[3];
     b
 }
 
@@ -133,10 +123,10 @@ mod tests {
         );
         let b = find_borders(&img, 5);
 
-        assert_eq!(b.bottom_left.x, 0);
-        assert_eq!(b.bottom_left.y, 0);
-        assert_eq!(b.top_right.x, 99);
-        assert_eq!(b.top_right.y, 99);
+        assert_eq!(b.x_min, 0);
+        assert_eq!(b.y_min, 0);
+        assert_eq!(b.x_max, 99);
+        assert_eq!(b.y_max, 99);
     }
     #[test]
     fn test_real() {
@@ -157,9 +147,9 @@ mod tests {
         let b = find_borders(&img, 6);
         // img.write_bmp("/tmp/foo.bmp");
 
-        assert_eq!(b.bottom_left.x, 29);
-        assert_eq!(b.bottom_left.y, 19);
-        assert_eq!(b.top_right.x, 80);
-        assert_eq!(b.top_right.y, 70);
+        assert_eq!(b.x_min, 29);
+        assert_eq!(b.y_min, 19);
+        assert_eq!(b.x_max, 80);
+        assert_eq!(b.y_max, 70);
     }
 }
