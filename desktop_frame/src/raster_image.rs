@@ -66,7 +66,7 @@ impl RasterImage {
                     RGB {
                         r: (((x - x_min) as f64 * r_step) as u32 % 256) as u8,
                         g: (((y - y_min) as f64 * g_step) as u32 % 256) as u8,
-                        b: 128,
+                        b: 255 - (((x - x_min) as f64 * r_step) as u32 % 256) as u8,
                     },
                 );
             }

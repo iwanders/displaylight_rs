@@ -15,23 +15,27 @@ mod tests {
     fn test_full() {
         // Make a dummy image.
         let img = make_dummy_gradient();
+        img.write_bmp(
+            temp_dir()
+                .join("gradient.bmp")
+                .to_str()
+                .expect("path must be ok"),
+        )
+        .unwrap();
 
         // Detect the black borders
         let borders = border_detection::find_borders(&img, 5);
 
         // With the edges known, we can make the zones.
-        let zones = zones::Zones::make_zones(
-            borders.x_max - borders.x_min,
-            borders.y_max - borders.y_min,
-            100,
-            100,
-        );
+        let zones = zones::Zones::make_zones(&borders, 100, 100);
+        assert_eq!(zones.len(), 228);
 
         // With the zones known, we can create the sampler.
-        let sampler = sampler::Sampler::make_sampler(borders.x_min, borders.y_min, &zones);
+        let sampler = sampler::Sampler::make_sampler(&zones);
 
         // With the sampler, we can now sample and get color values.
         let values = sampler.sample(&img);
+        assert_eq!(values.len(), 228);
 
         // With the values known, we can color the zones appropriately.
         let mut canvas = RasterImage::filled(img.get_width(), img.get_height(), Default::default());

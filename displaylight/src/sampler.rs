@@ -12,14 +12,15 @@ pub struct Sampler {
 }
 
 impl Sampler {
-    pub fn make_sampler(x_offset: u32, y_offset: u32, zones: &[Rectangle]) -> Sampler {
+    pub fn make_sampler(zones: &[Rectangle]) -> Sampler {
         // Prepares indices for sampling.
         let mut sampler: Sampler = Sampler { indices: vec![] };
         sampler.indices.resize(zones.len(), vec![]);
+        // Sample center point for now.
         for (i, zone) in zones.iter().enumerate() {
             sampler.indices[i].push(Index {
-                x: zone.x_min + x_offset,
-                y: zone.y_min + y_offset,
+                x: (zone.x_max - zone.x_min) / 2 + zone.x_min,
+                y: (zone.y_max - zone.y_min) / 2 + zone.y_min,
             });
         }
         sampler
