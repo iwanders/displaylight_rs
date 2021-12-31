@@ -1,4 +1,4 @@
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Eq, PartialEq)]
 pub struct Rectangle {
     pub x_min: u32,
     pub x_max: u32,

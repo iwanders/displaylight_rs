@@ -1,4 +1,4 @@
-use displaylight::{border_detection, sampler, zones};
+use displaylight::{border_detection, rectangle::Rectangle, sampler, zones};
 use lights;
 
 use std::error::Error;
@@ -15,6 +15,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     const MAX_LEDS: usize = 228;
 
+    let mut state: Option<(Rectangle, sampler::Sampler)> = None;
     loop {
         let res = grabber.capture_image();
         if (!res) {
@@ -25,19 +26,21 @@ fn main() -> Result<(), Box<dyn Error>> {
 
         // Detect the black borders
         let borders = border_detection::find_borders(&*img, 5);
-        println!("Borders: {:?}", borders);
-        if (borders.y_min >= borders.y_max) {
-            img.write_ppm("/tmp/bad.ppm");
+
+        // Border size changed, make a new sampler.
+        if state.is_none() || state.as_ref().unwrap().0 != borders {
+            // With the edges known, we can make the zones.
+            // Zones goes bad with Rectangle { x_min: 622, x_max: 1353, y_min: 574, y_max: 384 }
+            let zones = zones::Zones::make_zones(&borders, 200, 200);
+            // println!("zones: {:?}", zones);
+            assert_eq!(zones.len(), MAX_LEDS);
+
+            // With the zones known, we can create the sampler.
+            let sampler = sampler::Sampler::make_sampler(&zones, 15);
+            state = Some((borders, sampler));
         }
-        // With the edges known, we can make the zones.
-        // Zones goes bad with Rectangle { x_min: 622, x_max: 1353, y_min: 574, y_max: 384 }
-        let zones = zones::Zones::make_zones(&borders, 200, 200);
-        // println!("zones: {:?}", zones);
-        assert_eq!(zones.len(), MAX_LEDS);
 
-        // With the zones known, we can create the sampler.
-        let sampler = sampler::Sampler::make_sampler(&zones);
-
+        let sampler = &state.as_ref().unwrap().1;
         // With the sampler, we can now sample and get color values.
         let values = sampler.sample(&*img);
         assert_eq!(values.len(), MAX_LEDS);
@@ -50,7 +53,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             leds[i].b = values[i].b;
         }
         control.set_leds(&leds)?;
-        thread::sleep(time::Duration::from_millis(10));
+        thread::sleep(time::Duration::from_millis(1000 / 60));
     }
 
     Ok(())

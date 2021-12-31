@@ -37,6 +37,11 @@ impl TrackedImage {
         }
         img
     }
+
+    pub fn clear_events(&self)
+    {
+        self.events.borrow_mut().clear()
+    }
 }
 
 impl Image for TrackedImage {
