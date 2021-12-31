@@ -25,6 +25,7 @@ impl Image for ImageX11 {
         }
         unsafe { (*self.image.unwrap()).height as u32 }
     }
+
     fn get_pixel(&self, x: u32, y: u32) -> RGB {
         if self.image.is_none() {
             panic!("Used get_width on an image that doesn't exist.");

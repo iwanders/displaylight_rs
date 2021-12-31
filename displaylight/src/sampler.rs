@@ -2,7 +2,6 @@ use crate::rectangle::Rectangle;
 use desktop_frame::{Image, RGB};
 use lights::RGB as lRGB;
 
-
 #[derive(Copy, Clone, Debug)]
 struct Index {
     pub x: u32,
@@ -23,11 +22,9 @@ impl Sampler {
             let height = std::cmp::min(1, (zone.y_max - zone.y_min) / distance_between_samples + 1);
             let width = std::cmp::min(1, (zone.x_max - zone.x_min) / distance_between_samples + 1);
             sampler.indices[i].reserve((height * width) as usize);
-            for y in (zone.y_min..zone.y_max).step_by(distance_between_samples as usize)
-            {
-                for x in (zone.x_min..zone.x_max).step_by(distance_between_samples as usize)
-                {
-                    sampler.indices[i].push(Index{x, y});
+            for y in (zone.y_min..zone.y_max).step_by(distance_between_samples as usize) {
+                for x in (zone.x_min..zone.x_max).step_by(distance_between_samples as usize) {
+                    sampler.indices[i].push(Index { x, y });
                 }
             }
         }
@@ -44,26 +41,27 @@ impl Sampler {
             let mut g = 0u32;
             let mut b = 0u32;
             let mut t = 0u32;
-            for point in sample_points.iter()
-            {
+            for point in sample_points.iter() {
                 let pixel = image.get_pixel(point.x, point.y);
                 r += pixel.r as u32;
                 g += pixel.g as u32;
                 b += pixel.b as u32;
                 t += 1;
             }
-            if t == 0
-            {
+            if t == 0 {
                 res[i] = RGB::black();
                 continue;
             }
-            res[i] = RGB{r: (r / t) as u8, g: (g / t) as u8, b: (b / t) as u8};
+            res[i] = RGB {
+                r: (r / t) as u8,
+                g: (g / t) as u8,
+                b: (b / t) as u8,
+            };
         }
         res
     }
 
-
-    pub fn sample_into(&self, image: &dyn Image, res: &mut [lRGB]){
+    pub fn sample_into(&self, image: &dyn Image, res: &mut [lRGB]) {
         // Use the prepared indices for sampling, going from an image to a set of colors.
         for (i, sample_points) in self.indices.iter().enumerate() {
             // Do something smart here like collecting all pixels on the sample points...
@@ -71,16 +69,14 @@ impl Sampler {
             let mut g = 0u32;
             let mut b = 0u32;
             let mut t = 0u32;
-            for point in sample_points.iter()
-            {
+            for point in sample_points.iter() {
                 let pixel = image.get_pixel(point.x, point.y);
                 r += pixel.r as u32;
                 g += pixel.g as u32;
                 b += pixel.b as u32;
                 t += 1;
             }
-            if t == 0
-            {
+            if t == 0 {
                 res[i].r = 0;
                 res[i].g = 0;
                 res[i].b = 0;

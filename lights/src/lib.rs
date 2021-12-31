@@ -15,7 +15,7 @@ use std::time::Duration;
 
 impl Lights {
     pub fn new(port_name: &str) -> Result<Lights, Box<dyn Error>> {
-        let mut port = serialport::new(port_name, 9600) // Baud rate is a dummy anyway.
+        let port = serialport::new(port_name, 9600) // Baud rate is a dummy anyway.
             .timeout(Duration::from_millis(10))
             .open()
             .map_err(|ref e| format!("Port '{}' not available: {}", &port_name, e))?;

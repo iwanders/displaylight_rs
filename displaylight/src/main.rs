@@ -20,7 +20,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut state: Option<(Rectangle, sampler::Sampler)> = None;
     loop {
         let res = grabber.capture_image();
-        if (!res) {
+        if !res {
             continue;
         }
         // Then, grab the image.
@@ -32,7 +32,6 @@ fn main() -> Result<(), Box<dyn Error>> {
         // Border size changed, make a new sampler.
         if state.is_none() || state.as_ref().unwrap().0 != borders {
             // With the edges known, we can make the zones.
-            // Zones goes bad with Rectangle { x_min: 622, x_max: 1353, y_min: 574, y_max: 384 }
             let zones = zones::Zones::make_zones(&borders, 200, 200);
             // println!("zones: {:?}", zones);
             assert_eq!(zones.len(), MAX_LEDS);
@@ -49,6 +48,4 @@ fn main() -> Result<(), Box<dyn Error>> {
         control.set_leds(&canvas)?;
         thread::sleep(time::Duration::from_millis(1000 / 60));
     }
-
-    Ok(())
 }
