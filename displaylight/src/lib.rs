@@ -1,9 +1,10 @@
 pub mod border_detection;
+pub mod rate_limiter;
 pub mod rectangle;
 pub mod sampler;
 pub mod zones;
 
-use desktop_frame::{get_grabber, Grabber, Resolution};
+use desktop_frame::{Grabber, Resolution};
 use lights;
 use rectangle::Rectangle;
 
@@ -89,6 +90,7 @@ pub struct DisplayLight {
     config: Config,
     grabber: Box<dyn Grabber>,
     lights: lights::Lights,
+    limiter: rate_limiter::Limiter,
 }
 
 impl DisplayLight {
@@ -96,6 +98,7 @@ impl DisplayLight {
 
     pub fn new(config: Config) -> Result<DisplayLight, Box<dyn Error>> {
         Ok(DisplayLight {
+            limiter: rate_limiter::Limiter::new(config.rate),
             config: config,
             grabber: desktop_frame::get_grabber(),
             lights: lights::Lights::new("/dev/ttyACM0")?,
@@ -134,6 +137,7 @@ impl DisplayLight {
                     config.width,
                     config.height,
                 );
+                cached_resolution = Some(current_resolution);
             }
 
             // Now, we are ready to try and get the image:
@@ -174,7 +178,7 @@ impl DisplayLight {
 
             // And, finally, we can set the leds to those colors.
             self.lights.set_leds(&canvas)?;
-            thread::sleep(time::Duration::from_millis(1000 / 60));
+            self.limiter.sleep();
         }
     }
 }

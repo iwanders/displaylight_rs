@@ -18,11 +18,11 @@ fn main() -> Result<(), Box<dyn Error>> {
         thread::sleep(time::Duration::from_millis(100));
     }
 
-    const max_leds: usize = 228;
+    const MAX_LEDS: usize = 228;
     let loops = 10;
-    for i in 0..(max_leds * loops) {
-        let mut leds = [RGB::default(); max_leds];
-        leds[i % max_leds] = RGB {
+    for i in 0..(MAX_LEDS * loops) {
+        let mut leds = [RGB::default(); MAX_LEDS];
+        leds[i % MAX_LEDS] = RGB {
             r: 255,
             g: 255,
             b: 255,

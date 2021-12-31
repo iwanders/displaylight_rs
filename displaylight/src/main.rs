@@ -9,7 +9,7 @@ extern crate clap;
 use clap::{App, Arg, SubCommand};
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let mut app = App::new("DisplayLight")
+    let app = App::new("DisplayLight")
         .about("Controls leds behind the monitor.")
         .arg(
             Arg::with_name("config")

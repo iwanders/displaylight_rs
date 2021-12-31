@@ -7,7 +7,7 @@ fn main() {
     let res = grabber.get_resolution();
 
     println!("Grabber reports resolution of: {:?}", res);
-    grabber.prepare_capture(1920, 0, res.width - 1920, res.height);
+    grabber.prepare_capture(0, 1920, 0, res.width - 1920, res.height);
 
     let mut res = grabber.capture_image();
     while !res {
