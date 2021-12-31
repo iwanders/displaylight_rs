@@ -72,6 +72,17 @@ impl RasterImage {
             }
         }
     }
+    pub fn scalar_multiply(&mut self, f: f32)
+    {
+
+        for y in 0..self.get_height() {
+            for x in 0..self.get_width() {
+                let old = self.get_pixel(x, y);
+                let new = RGB{r: (old.r as f32 * f) as u8, g: (old.g as f32 * f) as u8, b: (old.b as f32 * f) as u8};
+                self.set_pixel(x, y, new);
+            }
+        }
+    }
 }
 
 impl Image for RasterImage {
