@@ -281,12 +281,13 @@ impl GrabberWin {
         let mut n: GrabberWin = Default::default();
         n.init_adaptor()
             .expect("Should have an adaptor and d3d11 device now.");
-        n.init_output(0).expect("Should be able to get the output.");
-        n.init_duplicator()
-            .expect("Should be able to get the duplicator.");
         n
     }
-    pub fn prepare(&mut self, _x: u32, _y: u32, _width: u32, _height: u32) -> bool {
+
+    pub fn prepare(&mut self, display: u32, _x: u32, _y: u32, _width: u32, _height: u32) -> bool {
+        self.init_output(display).expect("Should be able to setup the output.");
+        n.init_duplicator()
+            .expect("Should be able to get the duplicator.");
         true
     }
 
@@ -457,13 +458,13 @@ impl Grabber for GrabberWin {
         }
     }
 
-    fn prepare_capture(&mut self, x: u32, y: u32, width: u32, height: u32) -> bool {
-        return GrabberWin::prepare(self, x, y, width, height);
+    fn prepare_capture(&mut self, display: u32, x: u32, y: u32, width: u32, height: u32) -> bool {
+        return GrabberWin::prepare(self, display, x, y, width, height);
     }
 }
 
 pub fn get_grabber() -> Box<dyn Grabber> {
     let mut z = Box::<GrabberWin>::new(GrabberWin::new());
-    z.prepare(0, 0, 0, 0);
+    z.prepare(0, 0, 0, 0, 0);
     z
 }

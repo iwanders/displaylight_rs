@@ -26,7 +26,7 @@ impl RGB {
     }
 }
 
-#[derive(Debug, Default, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, Eq, PartialEq)]
 /// Struct to represent the resolution.
 pub struct Resolution {
     pub width: u32,
@@ -132,7 +132,7 @@ pub trait Grabber {
     fn get_resolution(&mut self) -> Resolution;
 
     /// Attempt to prepare capture for a subsection of the entire desktop.
-    fn prepare_capture(&mut self, _x: u32, _y: u32, _width: u32, _height: u32) -> bool {
+    fn prepare_capture(&mut self, _display: u32, _x: u32, _y: u32, _width: u32, _height: u32) -> bool {
         return false;
     }
 }

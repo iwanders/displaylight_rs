@@ -215,7 +215,7 @@ impl Grabber for GrabberX11 {
         Resolution { width, height }
     }
 
-    fn prepare_capture(&mut self, x: u32, y: u32, width: u32, height: u32) -> bool {
+    fn prepare_capture(&mut self, _display: u32, x: u32, y: u32, width: u32, height: u32) -> bool {
         return GrabberX11::prepare(self, x, y, width, height);
     }
 }
