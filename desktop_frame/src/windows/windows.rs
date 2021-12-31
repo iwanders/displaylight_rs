@@ -199,18 +199,19 @@ impl GrabberWin {
         unsafe {
             let mut res = adaptor.EnumOutputs(output_index);
             while res.is_ok() {
-                println!("idxgiouptut:");
+                // println!("idxgiouptut:");
                 let output = res.unwrap();
                 let desc = output.GetDesc()?;
-                println!(
-                    "Output: {}, name: {}, monitor: {}",
-                    output_index,
-                    OsString::from_wide(&desc.DeviceName)
-                        .to_str()
-                        .unwrap_or("Unknown"),
-                    desc.Monitor
-                );
                 if desired == output_index {
+
+                    println!(
+                        "Found desired output: {}, name: {}, monitor: {}",
+                        output_index,
+                        OsString::from_wide(&desc.DeviceName)
+                            .to_str()
+                            .unwrap_or("Unknown"),
+                        desc.Monitor
+                    );
                     self.output = Some(output);
                     return Ok(());
                 }
@@ -224,20 +225,18 @@ impl GrabberWin {
     fn init_duplicator(&mut self) -> Result<()> {
         let output = self.output.as_ref().expect("Must have an output");
         self.duplicator = None;
-        // let output1: &IDXGIOutput1  = output.cast().expect("Should be castable.");
-        // No idea if this is the way...
+
         unsafe {
             // let output1: &IDXGIOutput1 = std::mem::transmute::<&IDXGIOutput, &IDXGIOutput1>(output);
-            let desc = output.GetDesc()?;
-            println!(
-                "Device: {:?}, monitor: {}",
-                from_wide(&desc.DeviceName),
-                desc.Monitor
-            );
-            // let z = output.CheckInterfaceSupport(&IDXGIOutput1::IID);  // Oh.
-            // println!("z: {:?}", z);
+            // let desc = output.GetDesc()?;
+            // println!(
+                // "Device: {:?}, monitor: {}",
+                // from_wide(&desc.DeviceName),
+                // desc.Monitor
+            // );
+
             let output1: Result<IDXGIOutput1> = output.cast();
-            let output1 = output1.expect("SHould have succeeded.");
+            let output1 = output1.expect("Should have succeeded.");
             // let output1 = output.GetParent::<&IDXGIOutput1>().expect("Yes");
             // From C++, the following can fail with:
             //  E_ACCESSDENIED, when on fullscreen uac prompt
@@ -266,7 +265,7 @@ impl GrabberWin {
             };
             duplicator.GetDesc(&mut desc);
             println!(
-                "Duplicator: {}x{} @ {}/{}, in memory: {}",
+                "Duplicator initialised: {}x{} @ {}/{}, in memory: {}",
                 desc.ModeDesc.Width,
                 desc.ModeDesc.Height,
                 desc.ModeDesc.RefreshRate.Numerator,
@@ -383,7 +382,6 @@ impl GrabberWin {
                         0 as *const windows::Win32::Graphics::Direct3D11::D3D11_SUBRESOURCE_DATA,
                     )?
             });
-            println!("Made new image");
         }
 
         // Finally, we are at the end of all of this and we can actually copy the resource.

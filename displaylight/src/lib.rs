@@ -8,10 +8,8 @@ use desktop_frame::{Grabber, Resolution};
 use lights;
 use rectangle::Rectangle;
 
-use std::error::Error;
-use std::{thread, time};
-
 use serde::{Deserialize, Serialize};
+use std::error::Error;
 
 #[derive(Debug, PartialEq, Serialize, Deserialize, Default, Copy, Clone)]
 pub struct CaptureSpecification {
@@ -144,8 +142,10 @@ impl DisplayLight {
             let res = self.grabber.capture_image();
             if !res {
                 // Getting the image failed... :( Lets wait a bit and try again.
-                thread::sleep(time::Duration::from_millis(10));
-                println!("Failed to capture! ");
+                // Lets keep the leds at the old color. May make failures less noticable, but uac on windows doesn't
+                // look ugly when we can't grab the image for a while.
+                self.lights.set_leds(&canvas)?;
+                self.limiter.sleep();
                 continue;
             }
 
