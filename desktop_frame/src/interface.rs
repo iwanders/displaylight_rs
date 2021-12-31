@@ -12,6 +12,18 @@ impl RGB {
     pub fn black() -> RGB {
         RGB { r: 0, g: 0, b: 0 }
     }
+    pub fn yellow() -> RGB {
+        RGB { r: 255, g: 255, b: 0 }
+    }
+    pub fn cyan() -> RGB {
+        RGB { r: 0, g: 255, b: 255 }
+    }
+    pub fn magenta() -> RGB {
+        RGB { r: 255, g: 0, b: 255 }
+    }
+    pub fn white() -> RGB {
+        RGB { r: 255, g: 255, b: 255 }
+    }
 }
 
 #[derive(Debug, Default, Copy, Clone)]

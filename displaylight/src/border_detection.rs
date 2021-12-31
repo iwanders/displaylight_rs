@@ -6,6 +6,8 @@ use crate::rectangle::Rectangle;
 use desktop_frame::{Image, RGB};
 
 // This bespoke bisection procedure to find the presumably single transition in a 1d search.
+// This bails out if lower and upper are identical, so if the return of f at start min and max
+// is identical, it will return max if f(max) was true, else it returns min.
 fn bisect(f: &dyn Fn(u32) -> bool, min: u32, max: u32) -> u32 {
     let mut min = min;
     let mut max = max;
@@ -34,7 +36,7 @@ pub fn find_borders(image: &dyn Image, bisections_per_side: u32) -> Rectangle {
     let mut b: Rectangle = Default::default();
     use std::cmp::{max, min};
 
-    // No idea if this is the fastest way to write it... but it is cool.
+    // No idea if this is the fastest way to write it... but it is cool with the reduce.
     let bounds = (0..bisections_per_side)
         .map(|i| {
             let mut bisection_res: [u32; 4] = [0, 0, 0, 0];
@@ -90,6 +92,15 @@ mod tests {
     use super::*;
     use desktop_frame::raster_image::RasterImage;
     use desktop_frame::Image;
+    use std::env::temp_dir;
+
+    fn tmp_file(name: &str) -> String {
+        temp_dir()
+            .join(name)
+            .to_str()
+            .expect("path must be ok")
+            .to_owned()
+    }
 
     #[test]
     fn test_bisect() {
@@ -134,15 +145,7 @@ mod tests {
 
     #[test]
     fn test_fully_white() {
-        let img = RasterImage::filled(
-            100,
-            100,
-            RGB {
-                r: 255,
-                g: 255,
-                b: 255,
-            },
-        );
+        let img = RasterImage::filled(100, 100, RGB::white());
         let b = find_borders(&img, 5);
 
         assert_eq!(b.x_min, 0);
@@ -152,48 +155,59 @@ mod tests {
     }
 
     #[test]
-    fn test_real() {
+    fn test_free_floating_rect() {
         let mut img = RasterImage::filled(100, 100, RGB { r: 0, g: 0, b: 0 });
-        for y in 20..70u32 {
-            for x in 30..80u32 {
-                img.set_pixel(
-                    x,
-                    y,
-                    RGB {
-                        r: 255,
-                        g: 255,
-                        b: 0,
-                    },
-                );
-            }
-        }
+        img.fill_rectangle(30, 80, 20, 70, RGB::yellow());
         let mut tracked = desktop_frame::tracked_image::TrackedImage::new(Box::new(img));
         let b = find_borders(&tracked, 10);
-        let track_results = tracked.draw_access(0.5);
+        let mut track_results = tracked.draw_access(0.5);
+        track_results.set_pixel(b.x_min, b.y_min, RGB::cyan());
+        track_results.set_pixel(b.x_max, b.y_max, RGB::white());
         track_results
-            .write_ppm("/tmp/real_access.ppm")
+            .write_ppm(&tmp_file("free_floating.ppm"))
             .expect("Should succeed.");
 
-        assert_eq!(b.x_min, 29);
-        assert_eq!(b.y_min, 19);
-        assert_eq!(b.x_max, 79);
-        assert_eq!(b.y_max, 69);
+        assert_eq!(b.x_min, 29); // last index that is black
+        assert_eq!(b.y_min, 19); // last index that is black.
+        assert_eq!(b.x_max, 79); // last index that is not black.
+        assert_eq!(b.y_max, 69); // last index that is not black.
     }
 
     #[test]
-    fn test_y_min_beyond_y_max() {
-        let img = desktop_frame::read_ppm("/tmp/bad.ppm").expect("Load should succeed.");
-        let mut tracked = desktop_frame::tracked_image::TrackedImage::new(img);
-        let b = find_borders(&tracked, 5);
-        let track_results = tracked.draw_access(0.5);
-
+    fn test_horizontal_borders() {
+        let mut img = RasterImage::filled(100, 100, RGB { r: 0, g: 0, b: 0 });
+        img.fill_rectangle(0, 100, 20, 70, RGB::yellow());
+        let mut tracked = desktop_frame::tracked_image::TrackedImage::new(Box::new(img));
+        let b = find_borders(&tracked, 10);
+        let mut track_results = tracked.draw_access(0.5);
+        track_results.set_pixel(b.x_min, b.y_min, RGB::cyan());
+        track_results.set_pixel(b.x_max, b.y_max, RGB::white());
         track_results
-            .write_ppm("/tmp/access.ppm")
+            .write_ppm(&tmp_file("test_horizontal_borders.ppm"))
             .expect("Should succeed.");
 
-        assert!(b.x_min <= b.x_max);
-        assert!(b.y_min <= b.y_max);
+        assert_eq!(b.x_min, 0); // last index that is black
+        assert_eq!(b.y_min, 19); // last index that is black.
+        assert_eq!(b.x_max, 99); // last index that is not black.
+        assert_eq!(b.y_max, 69); // last index that is not black.
     }
-    /*
-     */
+
+    #[test]
+    fn test_vertical_borders() {
+        let mut img = RasterImage::filled(100, 100, RGB { r: 0, g: 0, b: 0 });
+        img.fill_rectangle(30, 80, 0, 100, RGB::yellow());
+        let mut tracked = desktop_frame::tracked_image::TrackedImage::new(Box::new(img));
+        let b = find_borders(&tracked, 10);
+        let mut track_results = tracked.draw_access(0.5);
+        track_results.set_pixel(b.x_min, b.y_min, RGB::cyan());
+        track_results.set_pixel(b.x_max, b.y_max, RGB::white());
+        track_results
+            .write_ppm(&tmp_file("test_vertical_borders.ppm"))
+            .expect("Should succeed.");
+
+        assert_eq!(b.x_min, 29); // last index that is black
+        assert_eq!(b.y_min, 0); // last index that is black.
+        assert_eq!(b.x_max, 79); // last index that is not black.
+        assert_eq!(b.y_max, 99); // last index that is not black.
+    }
 }
