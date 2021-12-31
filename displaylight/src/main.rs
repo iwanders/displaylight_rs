@@ -14,6 +14,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut control = lights::Lights::new("/dev/ttyACM0")?;
 
     const MAX_LEDS: usize = 228;
+    let mut canvas = [lights::RGB::default(); MAX_LEDS];
 
     let mut state: Option<(Rectangle, sampler::Sampler)> = None;
     loop {
@@ -42,17 +43,9 @@ fn main() -> Result<(), Box<dyn Error>> {
 
         let sampler = &state.as_ref().unwrap().1;
         // With the sampler, we can now sample and get color values.
-        let values = sampler.sample(&*img);
-        assert_eq!(values.len(), MAX_LEDS);
+        sampler.sample_into(&*img, &mut canvas);
 
-        // Finally, create the lights::RGB array.
-        let mut leds = [lights::RGB::default(); MAX_LEDS];
-        for i in 0..MAX_LEDS {
-            leds[i].r = values[i].r;
-            leds[i].g = values[i].g;
-            leds[i].b = values[i].b;
-        }
-        control.set_leds(&leds)?;
+        control.set_leds(&canvas)?;
         thread::sleep(time::Duration::from_millis(1000 / 60));
     }
 
