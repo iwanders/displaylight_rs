@@ -80,9 +80,21 @@ pub fn find_borders(image: &dyn Image, bisections_per_side: u32) -> Rectangle {
         });
 
     let bounds = bounds.expect("Will always have a result.");
-    b.x_min = bounds[0];
+    // For x_min and y_min, add one if the alue is not zero, this ensures we start on the non-white
+    // boundary. This does make it a bit odd if we actually have a bisection result that would
+    // truly be x_min=0, but in all other cases this means we start on the correct pixel where the
+    // non-black starts.
+    b.x_min = if bounds[0] != 0 {
+        bounds[0] + 1
+    } else {
+        bounds[0]
+    };
     b.x_max = bounds[1];
-    b.y_min = bounds[2];
+    b.y_min = if bounds[2] != 0 {
+        bounds[2] + 1
+    } else {
+        bounds[2]
+    };
     b.y_max = bounds[3];
     b
 }
@@ -167,8 +179,8 @@ mod tests {
             .write_ppm(&tmp_file("free_floating.ppm"))
             .expect("Should succeed.");
 
-        assert_eq!(b.x_min, 29); // last index that is black
-        assert_eq!(b.y_min, 19); // last index that is black.
+        assert_eq!(b.x_min, 30); // last index that is black
+        assert_eq!(b.y_min, 20); // last index that is black.
         assert_eq!(b.x_max, 79); // last index that is not black.
         assert_eq!(b.y_max, 69); // last index that is not black.
     }
@@ -187,7 +199,7 @@ mod tests {
             .expect("Should succeed.");
 
         assert_eq!(b.x_min, 0); // last index that is black
-        assert_eq!(b.y_min, 19); // last index that is black.
+        assert_eq!(b.y_min, 20); // last index that is black.
         assert_eq!(b.x_max, 99); // last index that is not black.
         assert_eq!(b.y_max, 69); // last index that is not black.
     }
@@ -205,7 +217,7 @@ mod tests {
             .write_ppm(&tmp_file("test_vertical_borders.ppm"))
             .expect("Should succeed.");
 
-        assert_eq!(b.x_min, 29); // last index that is black
+        assert_eq!(b.x_min, 30); // last index that is black
         assert_eq!(b.y_min, 0); // last index that is black.
         assert_eq!(b.x_max, 79); // last index that is not black.
         assert_eq!(b.y_max, 99); // last index that is not black.
