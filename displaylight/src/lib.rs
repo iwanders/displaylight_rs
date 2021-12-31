@@ -99,9 +99,9 @@ impl DisplayLight {
     pub fn new(config: Config) -> Result<DisplayLight, Box<dyn Error>> {
         Ok(DisplayLight {
             limiter: rate_limiter::Limiter::new(config.rate),
+            lights: lights::Lights::new(&config.port)?,
             config: config,
             grabber: desktop_frame::get_grabber(),
-            lights: lights::Lights::new("/dev/ttyACM0")?,
         })
     }
 
@@ -145,6 +145,7 @@ impl DisplayLight {
             if !res {
                 // Getting the image failed... :( Lets wait a bit and try again.
                 thread::sleep(time::Duration::from_millis(10));
+                println!("Failed to capture! ");
                 continue;
             }
 

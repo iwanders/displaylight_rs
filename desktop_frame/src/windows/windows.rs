@@ -286,7 +286,7 @@ impl GrabberWin {
 
     pub fn prepare(&mut self, display: u32, _x: u32, _y: u32, _width: u32, _height: u32) -> bool {
         self.init_output(display).expect("Should be able to setup the output.");
-        n.init_duplicator()
+        self.init_duplicator()
             .expect("Should be able to get the duplicator.");
         true
     }
@@ -311,6 +311,7 @@ impl GrabberWin {
         };
 
         if let Err(ref r) = res {
+            // println!("got an error error!: {:?}", r);
             // Error handling from the c++ implementation.
             if r.code() == windows::Win32::Graphics::Dxgi::DXGI_ERROR_ACCESS_LOST {
                 // This can happen when the resolution changes, or when we the context changes / full screen application
@@ -349,7 +350,6 @@ impl GrabberWin {
         let mut tex_desc: windows::Win32::Graphics::Direct3D11::D3D11_TEXTURE2D_DESC =
             Default::default();
         unsafe { frame.GetDesc(&mut tex_desc) };
-        println!("Frame info: {}x{}", tex_desc.Width, tex_desc.Height);
 
         let mut img_desc: windows::Win32::Graphics::Direct3D11::D3D11_TEXTURE2D_DESC =
             Default::default();
@@ -426,6 +426,7 @@ impl GrabberWin {
         new_img.CPUAccessFlags = windows::Win32::Graphics::Direct3D11::D3D11_CPU_ACCESS_READ;
         let device = self.device.as_ref().expect("Must have a device");
         let new_texture = unsafe {
+            // Need to wrap this into a releasing thing.
             device.CreateTexture2D(
                 &new_img,
                 0 as *const windows::Win32::Graphics::Direct3D11::D3D11_SUBRESOURCE_DATA,

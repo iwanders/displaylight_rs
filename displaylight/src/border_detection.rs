@@ -96,6 +96,15 @@ pub fn find_borders(image: &dyn Image, bisections_per_side: u32) -> Rectangle {
         bounds[2]
     };
     b.y_max = bounds[3];
+
+    // But that causes problems if the image is completely black, as x_min then exceeds x_max.
+    if b.x_min > b.x_max {
+        b.x_min = b.x_max
+    }
+    if b.y_min > b.y_max {
+        b.y_min = b.y_max
+    }
+
     b
 }
 
@@ -221,5 +230,23 @@ mod tests {
         assert_eq!(b.y_min, 0); // last index that is black.
         assert_eq!(b.x_max, 79); // last index that is not black.
         assert_eq!(b.y_max, 99); // last index that is not black.
+    }
+
+    #[test]
+    fn test_black() {
+        let mut img = RasterImage::filled(1920, 1080, RGB { r: 0, g: 0, b: 0 });
+        let mut tracked = desktop_frame::tracked_image::TrackedImage::new(Box::new(img));
+        let b = find_borders(&tracked, 10);
+        let mut track_results = tracked.draw_access(0.5);
+        track_results.set_pixel(b.x_min, b.y_min, RGB::cyan());
+        track_results.set_pixel(b.x_max, b.y_max, RGB::white());
+        track_results
+            .write_bmp(&tmp_file("test_black.bmp"))
+            .expect("Should succeed.");
+        println!("Borders: {:?}", b);
+        assert_eq!(b.x_min, 959); // last index that is black
+        assert_eq!(b.y_min, 539); // last index that is black.
+        assert_eq!(b.x_max, 959); // last index that is not black.
+        assert_eq!(b.y_max, 539); // last index that is not black.
     }
 }

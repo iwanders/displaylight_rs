@@ -1,0 +1,25 @@
+
+# The rate at which the update loop will run.
+rate: 60.0
+
+# The serial port to connect to.
+port: COM5
+
+# Vertical depth of zones used for sampling.
+vertical_depth: 200
+
+# Horizontal depth of zones used for sampling.
+horizontal_depth: 200
+
+# Distance between pixels to be sampled.
+sample_pixel_distance: 15
+
+# Number of bisections to perform per side.
+edge_detection_bisect_count: 4
+
+# Limiting factor between 0.0 and 1.0, 1.0 allows full brightness. 0.5 specifies half brightness.
+limiting_factor: 0.5
+
+capture:
+  -
+    display: 0
