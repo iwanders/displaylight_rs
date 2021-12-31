@@ -7,3 +7,6 @@ edition = "2021"
 desktop_frame = { path = "../desktop_frame" }
 lights = { path = "../lights" }
 clap = "2.34.0"
+
+serde = { version = "1.0", features = ["derive"] }
+serde_yaml = "0.8"
