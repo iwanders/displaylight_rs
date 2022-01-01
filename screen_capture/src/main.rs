@@ -1,8 +1,8 @@
-use desktop_frame;
+use screen_capture;
 
 use std::env::temp_dir;
 fn main() {
-    let mut grabber = desktop_frame::get_capture();
+    let mut grabber = screen_capture::get_capture();
 
     let res = grabber.get_resolution();
 
@@ -26,7 +26,7 @@ fn main() {
     .unwrap();
     println!("Capture done writing");
 
-    let z = desktop_frame::read_ppm(
+    let z = screen_capture::read_ppm(
         temp_dir()
             .join("foo.ppm")
             .to_str()

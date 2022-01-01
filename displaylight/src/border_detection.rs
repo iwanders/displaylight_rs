@@ -1,7 +1,7 @@
 //! Find the borders that bound the non black region in an image.
 
 use crate::rectangle::Rectangle;
-use desktop_frame::{Image, RGB};
+use screen_capture::{Image, RGB};
 
 // This bespoke bisection procedure to find the presumably single transition in a 1d search.
 // This bails out if lower and upper are identical, so if the return of f at start min and max
@@ -132,8 +132,8 @@ pub fn find_borders(image: &dyn Image, bisections_per_side: u32, only_rectangula
 #[cfg(test)]
 mod tests {
     use super::*;
-    use desktop_frame::raster_image::RasterImage;
-    use desktop_frame::Image;
+    use screen_capture::raster_image::RasterImage;
+    use screen_capture::Image;
     use std::env::temp_dir;
 
     fn tmp_file(name: &str) -> String {
@@ -200,7 +200,7 @@ mod tests {
     fn test_free_floating_rect() {
         let mut img = RasterImage::filled(100, 100, RGB { r: 0, g: 0, b: 0 });
         img.fill_rectangle(30, 80, 20, 70, RGB::yellow());
-        let tracked = desktop_frame::tracked_image::TrackedImage::new(Box::new(img));
+        let tracked = screen_capture::tracked_image::TrackedImage::new(Box::new(img));
         let b = find_borders(&tracked, 10, false).expect("Only rectangular is false.");
         let mut track_results = tracked.draw_access(0.5);
         track_results.set_pixel(b.x_min, b.y_min, RGB::cyan());
@@ -219,7 +219,7 @@ mod tests {
     fn test_horizontal_borders() {
         let mut img = RasterImage::filled(100, 100, RGB { r: 0, g: 0, b: 0 });
         img.fill_rectangle(0, 100, 20, 70, RGB::yellow());
-        let tracked = desktop_frame::tracked_image::TrackedImage::new(Box::new(img));
+        let tracked = screen_capture::tracked_image::TrackedImage::new(Box::new(img));
         let b = find_borders(&tracked, 10, false).expect("Only rectangular is false.");
         let mut track_results = tracked.draw_access(0.5);
         track_results.set_pixel(b.x_min, b.y_min, RGB::cyan());
@@ -238,7 +238,7 @@ mod tests {
     fn test_vertical_borders() {
         let mut img = RasterImage::filled(100, 100, RGB { r: 0, g: 0, b: 0 });
         img.fill_rectangle(30, 80, 0, 100, RGB::yellow());
-        let tracked = desktop_frame::tracked_image::TrackedImage::new(Box::new(img));
+        let tracked = screen_capture::tracked_image::TrackedImage::new(Box::new(img));
         let b = find_borders(&tracked, 10, false).expect("Only rectangular is false.");
         let mut track_results = tracked.draw_access(0.5);
         track_results.set_pixel(b.x_min, b.y_min, RGB::cyan());
@@ -256,7 +256,7 @@ mod tests {
     #[test]
     fn test_black() {
         let img = RasterImage::filled(1920, 1080, RGB { r: 0, g: 0, b: 0 });
-        let tracked = desktop_frame::tracked_image::TrackedImage::new(Box::new(img));
+        let tracked = screen_capture::tracked_image::TrackedImage::new(Box::new(img));
         let b = find_borders(&tracked, 10, false).expect("Only rectangular is false.");
         let mut track_results = tracked.draw_access(0.5);
         track_results.set_pixel(b.x_min, b.y_min, RGB::cyan());
@@ -277,7 +277,7 @@ mod tests {
         let mut img = RasterImage::filled(100, 100, RGB { r: 0, g: 0, b: 0 });
         img.fill_rectangle(20, 60, 20, 60, RGB::yellow());
         img.fill_rectangle(40, 80, 40, 80, RGB::yellow());
-        let tracked = desktop_frame::tracked_image::TrackedImage::new(Box::new(img));
+        let tracked = screen_capture::tracked_image::TrackedImage::new(Box::new(img));
         let b = find_borders(&tracked, 10, true);
         let track_results = tracked.draw_access(0.5);
         track_results
@@ -289,7 +289,7 @@ mod tests {
         img.fill_rectangle(10, 40, 30, 60, RGB::yellow());
         img.fill_rectangle(30, 70, 20, 30, RGB::yellow());
         img.fill_rectangle(60, 90, 30, 60, RGB::yellow());
-        let tracked = desktop_frame::tracked_image::TrackedImage::new(Box::new(img));
+        let tracked = screen_capture::tracked_image::TrackedImage::new(Box::new(img));
         let b = find_borders(&tracked, 10, true);
         let track_results = tracked.draw_access(0.5);
         track_results

@@ -17,7 +17,7 @@ pub mod rectangle;
 pub mod sampler;
 pub mod zones;
 
-use desktop_frame::{Capture, Resolution};
+use screen_capture::{Capture, Resolution};
 use lights;
 use rectangle::Rectangle;
 
@@ -141,7 +141,7 @@ impl DisplayLight {
             limiter: rate_limiter::Limiter::new(config.rate),
             lights: lights::Lights::new(&config.port)?,
             config: config,
-            grabber: desktop_frame::get_capture(),
+            grabber: screen_capture::get_capture(),
         })
     }
 
@@ -241,8 +241,8 @@ impl DisplayLight {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use desktop_frame::raster_image::RasterImage;
-    use desktop_frame::{Image, RGB};
+    use screen_capture::raster_image::RasterImage;
+    use screen_capture::{Image, RGB};
     use std::env::temp_dir;
 
     fn tmp_file(name: &str) -> String {
@@ -271,7 +271,7 @@ mod tests {
         .unwrap();
 
         // Detect the black borders
-        let tracked = desktop_frame::tracked_image::TrackedImage::new(Box::new(img));
+        let tracked = screen_capture::tracked_image::TrackedImage::new(Box::new(img));
         let b = border_detection::find_borders(&tracked, 5, false).expect("Only rectangular is false");
         let mut track_results = tracked.draw_access(0.5);
         track_results.set_pixel(b.x_min, b.y_min, RGB::cyan());

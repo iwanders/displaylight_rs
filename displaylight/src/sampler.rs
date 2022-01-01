@@ -1,6 +1,6 @@
 //! A struct that efficiently samples the image and calculates averaged values.
 use crate::rectangle::Rectangle;
-use desktop_frame::{Image, RGB};
+use screen_capture::{Image, RGB};
 use lights::RGB as lRGB;
 
 #[derive(Copy, Clone, Debug)]
