@@ -48,8 +48,8 @@ mod tests {
 
             // println!("Time difference: {:?}", t_new - t_old);
             let desired: f32 = 0.1;
-            const within: f32 = 0.05;
-            assert!((((t_new - t_old).as_secs_f32()  - desired).abs()) <  within);
+            const WITHIN: f32 = 0.05;
+            assert!((((t_new - t_old).as_secs_f32()  - desired).abs()) <  WITHIN);
             t_old = t_new;
 
             sleep(Duration::from_secs_f32(0.05));  // sleep some extra here to ensure we do 'work'.

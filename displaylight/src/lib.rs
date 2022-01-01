@@ -205,7 +205,7 @@ impl DisplayLight {
             // Detect the black borders
             let borders =
                 border_detection::find_borders(&*img, self.config.edge_detection_bisect_count, self.config.edge_detection_rectangular_only);
-            println!("Borders: {:?}", borders);
+            // println!("Borders: {:?}", borders);
 
             // Border size changed, make a new sampler.
             if let Some(borders) = borders
@@ -271,7 +271,7 @@ mod tests {
         .unwrap();
 
         // Detect the black borders
-        let mut tracked = desktop_frame::tracked_image::TrackedImage::new(Box::new(img));
+        let tracked = desktop_frame::tracked_image::TrackedImage::new(Box::new(img));
         let b = border_detection::find_borders(&tracked, 5, false).expect("Only rectangular is false");
         let mut track_results = tracked.draw_access(0.5);
         track_results.set_pixel(b.x_min, b.y_min, RGB::cyan());
@@ -291,7 +291,7 @@ mod tests {
         tracked.clear_events();
         let values = sampler.sample(&tracked);
         assert_eq!(values.len(), 228);
-        let mut track_results = tracked.draw_access(0.5);
+        let track_results = tracked.draw_access(0.5);
 
         track_results
             .write_ppm(&tmp_file("test_full_sampling.ppm"))

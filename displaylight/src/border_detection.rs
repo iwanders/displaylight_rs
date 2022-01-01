@@ -200,7 +200,7 @@ mod tests {
     fn test_free_floating_rect() {
         let mut img = RasterImage::filled(100, 100, RGB { r: 0, g: 0, b: 0 });
         img.fill_rectangle(30, 80, 20, 70, RGB::yellow());
-        let mut tracked = desktop_frame::tracked_image::TrackedImage::new(Box::new(img));
+        let tracked = desktop_frame::tracked_image::TrackedImage::new(Box::new(img));
         let b = find_borders(&tracked, 10, false).expect("Only rectangular is false.");
         let mut track_results = tracked.draw_access(0.5);
         track_results.set_pixel(b.x_min, b.y_min, RGB::cyan());
@@ -219,7 +219,7 @@ mod tests {
     fn test_horizontal_borders() {
         let mut img = RasterImage::filled(100, 100, RGB { r: 0, g: 0, b: 0 });
         img.fill_rectangle(0, 100, 20, 70, RGB::yellow());
-        let mut tracked = desktop_frame::tracked_image::TrackedImage::new(Box::new(img));
+        let tracked = desktop_frame::tracked_image::TrackedImage::new(Box::new(img));
         let b = find_borders(&tracked, 10, false).expect("Only rectangular is false.");
         let mut track_results = tracked.draw_access(0.5);
         track_results.set_pixel(b.x_min, b.y_min, RGB::cyan());
@@ -238,7 +238,7 @@ mod tests {
     fn test_vertical_borders() {
         let mut img = RasterImage::filled(100, 100, RGB { r: 0, g: 0, b: 0 });
         img.fill_rectangle(30, 80, 0, 100, RGB::yellow());
-        let mut tracked = desktop_frame::tracked_image::TrackedImage::new(Box::new(img));
+        let tracked = desktop_frame::tracked_image::TrackedImage::new(Box::new(img));
         let b = find_borders(&tracked, 10, false).expect("Only rectangular is false.");
         let mut track_results = tracked.draw_access(0.5);
         track_results.set_pixel(b.x_min, b.y_min, RGB::cyan());
@@ -255,8 +255,8 @@ mod tests {
 
     #[test]
     fn test_black() {
-        let mut img = RasterImage::filled(1920, 1080, RGB { r: 0, g: 0, b: 0 });
-        let mut tracked = desktop_frame::tracked_image::TrackedImage::new(Box::new(img));
+        let img = RasterImage::filled(1920, 1080, RGB { r: 0, g: 0, b: 0 });
+        let tracked = desktop_frame::tracked_image::TrackedImage::new(Box::new(img));
         let b = find_borders(&tracked, 10, false).expect("Only rectangular is false.");
         let mut track_results = tracked.draw_access(0.5);
         track_results.set_pixel(b.x_min, b.y_min, RGB::cyan());
@@ -277,21 +277,21 @@ mod tests {
         let mut img = RasterImage::filled(100, 100, RGB { r: 0, g: 0, b: 0 });
         img.fill_rectangle(20, 60, 20, 60, RGB::yellow());
         img.fill_rectangle(40, 80, 40, 80, RGB::yellow());
-        let mut tracked = desktop_frame::tracked_image::TrackedImage::new(Box::new(img));
+        let tracked = desktop_frame::tracked_image::TrackedImage::new(Box::new(img));
         let b = find_borders(&tracked, 10, true);
-        let mut track_results = tracked.draw_access(0.5);
+        let track_results = tracked.draw_access(0.5);
         track_results
             .write_ppm(&tmp_file("test_only_rectangular.ppm"))
             .expect("Should succeed.");
-        // assert!(b.is_none());
+        assert!(b.is_none());
 
         let mut img = RasterImage::filled(100, 100, RGB { r: 0, g: 0, b: 0 });
         img.fill_rectangle(10, 40, 30, 60, RGB::yellow());
         img.fill_rectangle(30, 70, 20, 30, RGB::yellow());
         img.fill_rectangle(60, 90, 30, 60, RGB::yellow());
-        let mut tracked = desktop_frame::tracked_image::TrackedImage::new(Box::new(img));
+        let tracked = desktop_frame::tracked_image::TrackedImage::new(Box::new(img));
         let b = find_borders(&tracked, 10, true);
-        let mut track_results = tracked.draw_access(0.5);
+        let track_results = tracked.draw_access(0.5);
         track_results
             .write_ppm(&tmp_file("test_only_rectangular2.ppm"))
             .expect("Should succeed.");
