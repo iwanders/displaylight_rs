@@ -3,6 +3,11 @@
 #include <iomanip>
 #include "messages.h"
 
+/*
+  C++ program to print to populate the structs and print them as bytes, to ensure the Rust
+  implementation matches the C++ bytes.
+*/
+
 
 std::string hexdump(const std::uint8_t* d, std::size_t length)
 {

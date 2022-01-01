@@ -4,8 +4,7 @@ use X11::*;
 
 mod shm;
 
-// Then, we can utilise all of that to create an Image instance backed by the shared memory.
-
+/// Image wrapper around XImage.
 struct ImageX11 {
     image: Option<*mut XImage>,
 }
@@ -54,6 +53,7 @@ impl Image for ImageX11 {
     }
 }
 
+/// Grabber struct for X11.
 struct GrabberX11 {
     display: *mut Display,
     window: Window,
@@ -219,7 +219,6 @@ impl Grabber for GrabberX11 {
         return GrabberX11::prepare(self, x, y, width, height);
     }
 }
-// fn(*mut display, *mut XErrorEvent) -> i32) -> i32
 
 unsafe extern "C" fn error_handler(_display: *mut Display, event: *mut XErrorEvent) -> i32 {
     println!("Error: {:?}", event);

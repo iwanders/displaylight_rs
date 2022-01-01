@@ -1,3 +1,4 @@
+//! Defines traits used by the desktop_frame crate.
 use crate::raster_image::RasterImage;
 
 #[derive(Debug, Default, Copy, Clone, Eq, PartialEq)]
@@ -13,16 +14,32 @@ impl RGB {
         RGB { r: 0, g: 0, b: 0 }
     }
     pub fn yellow() -> RGB {
-        RGB { r: 255, g: 255, b: 0 }
+        RGB {
+            r: 255,
+            g: 255,
+            b: 0,
+        }
     }
     pub fn cyan() -> RGB {
-        RGB { r: 0, g: 255, b: 255 }
+        RGB {
+            r: 0,
+            g: 255,
+            b: 255,
+        }
     }
     pub fn magenta() -> RGB {
-        RGB { r: 255, g: 0, b: 255 }
+        RGB {
+            r: 255,
+            g: 0,
+            b: 255,
+        }
     }
     pub fn white() -> RGB {
-        RGB { r: 255, g: 255, b: 255 }
+        RGB {
+            r: 255,
+            g: 255,
+            b: 255,
+        }
     }
 }
 
@@ -113,6 +130,7 @@ pub trait Image {
     }
 }
 
+// Implementation for cloning a boxed image, this always makes a true copy to a raster image.
 impl Clone for Box<dyn Image> {
     fn clone(&self) -> Self {
         return Box::new(RasterImage::new(self.as_ref()));
@@ -132,7 +150,16 @@ pub trait Grabber {
     fn get_resolution(&mut self) -> Resolution;
 
     /// Attempt to prepare capture for a subsection of the entire desktop.
-    fn prepare_capture(&mut self, _display: u32, _x: u32, _y: u32, _width: u32, _height: u32) -> bool {
+    /// This is implementation defined and not guaranteed to do anything. It MUST be called before
+    /// trying to capture an image, as setup may happen here.
+    fn prepare_capture(
+        &mut self,
+        _display: u32,
+        _x: u32,
+        _y: u32,
+        _width: u32,
+        _height: u32,
+    ) -> bool {
         return false;
     }
 }

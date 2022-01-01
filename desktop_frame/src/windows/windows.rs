@@ -1,8 +1,18 @@
+//! This uses the desktop duplication api.
+//! https://docs.microsoft.com/en-us/windows/win32/direct3ddxgi/desktop-dup-api
+//! Basic steps are:
+//!  - Create the IDXGI adaptor
+//!  - Obtain the Output
+//!  - Create the duplicator
+//!  - Create a texture for the duplicator to write into.
+//!  - And then, when an image is requested, we map a new image to the texture the duplicator wrote.
+//!
+//! Whenever failure happens, we try to reinstantiate the duplicator, this can happen when the
+//! resolution changes, or when we don't have permissions to do a screen capture.
+
 use crate::interface::*;
 use windows;
 
-// This uses the desktop duplication api.
-// https://docs.microsoft.com/en-us/windows/win32/direct3ddxgi/desktop-dup-api
 use windows::{
     core::Result, core::*, Win32::Graphics::Direct3D11::*, Win32::Graphics::Dxgi::Common::*,
     Win32::Graphics::Dxgi::*,
@@ -203,7 +213,6 @@ impl GrabberWin {
                 let output = res.unwrap();
                 let desc = output.GetDesc()?;
                 if desired == output_index {
-
                     println!(
                         "Found desired output: {}, name: {}, monitor: {}",
                         output_index,
@@ -230,9 +239,9 @@ impl GrabberWin {
             // let output1: &IDXGIOutput1 = std::mem::transmute::<&IDXGIOutput, &IDXGIOutput1>(output);
             // let desc = output.GetDesc()?;
             // println!(
-                // "Device: {:?}, monitor: {}",
-                // from_wide(&desc.DeviceName),
-                // desc.Monitor
+            // "Device: {:?}, monitor: {}",
+            // from_wide(&desc.DeviceName),
+            // desc.Monitor
             // );
 
             let output1: Result<IDXGIOutput1> = output.cast();
@@ -284,7 +293,8 @@ impl GrabberWin {
     }
 
     pub fn prepare(&mut self, display: u32, _x: u32, _y: u32, _width: u32, _height: u32) -> bool {
-        self.init_output(display).expect("Should be able to setup the output.");
+        self.init_output(display)
+            .expect("Should be able to setup the output.");
         self.init_duplicator()
             .expect("Should be able to get the duplicator.");
         true
@@ -464,6 +474,5 @@ impl Grabber for GrabberWin {
 
 pub fn get_grabber() -> Box<dyn Grabber> {
     let mut z = Box::<GrabberWin>::new(GrabberWin::new());
-    z.prepare(0, 0, 0, 0, 0);
     z
 }

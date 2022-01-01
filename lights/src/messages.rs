@@ -1,3 +1,5 @@
+//! Message structs adopted from the C++ implementation running on the microcontroller.
+
 /*
 //  Message definitions
 struct RGB
@@ -14,6 +16,7 @@ struct RGB
 
 #[repr(C, packed)]
 #[derive(Default, Clone, Copy, Debug)]
+/// Struct to represent the RGB state of a single led.
 pub struct RGB {
     pub r: u8,
     pub g: u8,
@@ -29,6 +32,7 @@ enum MsgType : uint8_t
 };
 
 */
+/// MsgType container to retrieve constants from. Is an enum on the C++ sid.
 pub struct MsgType {}
 impl MsgType {
     pub const NOP: u8 = 0;
@@ -56,6 +60,7 @@ struct Config
 */
 #[repr(C, packed)]
 #[derive(Clone, Copy, Debug)]
+/// Config struct to change properties on the microcontroller.
 pub struct Config {
     /// If there has been activity, decay won't take place for decay_time_delay_ms milliseconds.
     pub decay_time_delay_ms: u32,
@@ -74,8 +79,8 @@ pub struct Config {
     pub gamma_b: f32,
 }
 impl Default for Config {
+    /// Sets the defaults as they are in the firmware.
     fn default() -> Self {
-        // Defaults copied from the firmware.
         Config {
             decay_time_delay_ms: 1000,
             decay_interval_us: 1000,
@@ -99,17 +104,26 @@ struct ColorData
   RGB color[leds_per_message];  // takes 12 messages to send 228 bytes
 };
 */
+/// The number of led colors that can be sent in a single message.
 const LEDS_PER_MESSAGE: usize = 19;
 #[repr(C, packed)]
 #[derive(Default, Clone, Copy, Debug)]
+/// Struct to contain the color data for pixels as sent in a message.
 pub struct ColorData {
     pub offset: u16,
     pub settings: u8,
     pub color: [RGB; LEDS_PER_MESSAGE],
 }
+
 impl ColorData {
+    /// If this bit is set in settings, the led string will be 'drawn' after this message is processed.
     pub const SETTINGS_SHOW_AFTER: u8 = 1u8 << 0;
+
+    /// If this bit is set, all leds in the led string will be set to the first color provided in
+    /// the color array.
     pub const SETTINGS_SET_ALL: u8 = 1u8 << 1;
+
+    /// The number of leds that are sent in a single message.
     pub const LEDS_PER_MESSAGE: usize = LEDS_PER_MESSAGE;
 }
 
@@ -127,6 +141,7 @@ struct Message
 */
 #[repr(C)]
 #[derive(Clone, Copy)]
+/// Union for the payload sent in the message.
 pub union Payload {
     pub color: ColorData,
     pub config: Config,
@@ -140,6 +155,7 @@ impl Default for Payload {
 use std::fmt;
 use std::fmt::Debug;
 impl Debug for Payload {
+    /// Debug formatter for the payload always uses raw.
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let as_raw = unsafe { &self.raw };
         f.debug_struct("Payload").field("raw", as_raw).finish()
@@ -148,12 +164,14 @@ impl Debug for Payload {
 
 #[repr(C, packed)]
 #[derive(Default, Clone, Copy)]
+/// Message struct that will be sent across the wire to the microcontroller.
 pub struct Message {
     pub msg_type: u8,
     pub _padding: [u8; 3],
     pub payload: Payload,
 }
 impl Debug for Message {
+    /// Format a human readable version of this message. Interpreting the msg_type field.
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.msg_type {
             MsgType::NOP => f

@@ -1,9 +1,11 @@
+//! A crate to access the current image shown on the monitor.
+//!  - Using X11's [Xshm](https://en.wikipedia.org/wiki/MIT-SHM) extension for efficient retrieval on Linux.
+//!  - Using Windows' [Desktop Duplication API](https://docs.microsoft.com/en-us/windows/win32/direct3ddxgi/desktop-dup-api) for efficient retrieval on Windows.
 pub mod interface;
 pub mod raster_image;
 pub mod tracked_image;
 
-pub use interface::{Grabber, Image, RGB, Resolution};
-
+pub use interface::{Grabber, Image, Resolution, RGB};
 
 #[cfg_attr(target_os = "linux", path = "./linux/linux.rs")]
 #[cfg_attr(target_os = "windows", path = "./windows/windows.rs")]
@@ -14,9 +16,8 @@ pub fn get_grabber() -> Box<dyn Grabber> {
     return backend::get_grabber();
 }
 
-/// Reads a pnm image from disk. (or rather pnms written by `Image::write_pnm`).
+/// Reads a ppm image from disk. (or rather ppms written by [`Image::write_ppm`]).
 pub fn read_ppm(filename: &str) -> Result<Box<dyn Image>, Box<dyn std::error::Error>> {
-    println!("zzz: {:?}", "dsfsdf");
     use std::fs::File;
     let file = File::open(filename)?;
     use std::io::{BufRead, BufReader};

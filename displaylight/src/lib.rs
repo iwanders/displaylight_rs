@@ -187,7 +187,6 @@ impl DisplayLight {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use desktop_frame::raster_image::make_dummy_gradient;
     use desktop_frame::raster_image::RasterImage;
     use desktop_frame::{Image, RGB};
     use std::env::temp_dir;
@@ -200,6 +199,11 @@ mod tests {
             .to_owned()
     }
 
+    fn make_dummy_gradient() -> RasterImage {
+        let mut img = RasterImage::filled(1920, 1080, RGB { r: 0, g: 0, b: 0 });
+        img.set_gradient(200, 1920 - 200, 0, 1080);
+        img
+    }
     #[test]
     fn test_full() {
         // Make a dummy image.

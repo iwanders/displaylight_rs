@@ -1,3 +1,4 @@
+//! A module to control LED lights attached to a microcontroller.
 mod messages;
 use messages::{ColorData, Message, MsgType};
 
@@ -14,19 +15,26 @@ use std::error::Error;
 use std::time::Duration;
 
 impl Lights {
+    /// Create a new Lights instance, attaching to the provided serial port.
     pub fn new(port_name: &str) -> Result<Lights, Box<dyn Error>> {
         let port = serialport::new(port_name, 9600) // Baud rate is a dummy anyway.
             .timeout(Duration::from_millis(10))
             .open()
             .map_err(|ref e| format!("Port '{}' not available: {}", &port_name, e))?;
-        Ok(Lights { port: port, limit_factor: 1.0})
+        Ok(Lights {
+            port: port,
+            limit_factor: 1.0,
+        })
     }
 
-    pub fn set_limit_factor(&mut self, factor: f32)
-    {
+    /// Set the brightness limiting factor (0.0 - 1.0), this reduces the overall brightness for any
+    /// values set through [`Lights::fill`] or [`Lights::set_leds`]. This can be helpful if the
+    /// power supply is inadequate.
+    pub fn set_limit_factor(&mut self, factor: f32) {
         self.limit_factor = factor;
     }
 
+    /// Set the configuration on the microcontroller to the provided struct.
     pub fn set_config(&mut self, config: &Config) -> Result<(), Box<dyn Error>> {
         let mut msg: Message = Default::default();
         msg.msg_type = MsgType::CONFIG;
@@ -36,6 +44,7 @@ impl Lights {
         Ok(())
     }
 
+    /// Fill the entire string of leds with the provided color.
     pub fn fill(&mut self, r: u8, g: u8, b: u8) -> Result<(), Box<dyn Error>> {
         let mut msg: Message = Default::default();
         msg.msg_type = MsgType::COLOR;
@@ -51,6 +60,7 @@ impl Lights {
         Ok(())
     }
 
+    /// Set the leds to the provided pixel values.
     pub fn set_leds(&mut self, pixels: &[RGB]) -> Result<(), Box<dyn Error>> {
         // chunk the pixels into LEDS_PER_MESSAGE.
         let chunk_count =
@@ -80,6 +90,7 @@ impl Lights {
     }
 }
 
+/// Helper function to list the available ports.
 pub fn available_ports() -> Result<Vec<serialport::SerialPortInfo>, serialport::Error> {
     return serialport::available_ports();
 }

@@ -1,10 +1,9 @@
-// wrapper that allows us to track which pixels were read and how often.
+//! Wrapper image that allows us to track which pixels were read and how often.
 
 use crate::interface::*;
 use crate::raster_image::RasterImage;
 
-enum Event
-{
+enum Event {
     Read(u32, u32),
 }
 
@@ -16,30 +15,35 @@ pub struct TrackedImage {
 }
 impl TrackedImage {
     pub fn new(img: Box<dyn Image>) -> TrackedImage {
-        TrackedImage{img, events: RefCell::new(vec!())}
+        TrackedImage {
+            img,
+            events: RefCell::new(vec![]),
+        }
     }
 
-    pub fn draw_access(&self, opacity: f32) -> RasterImage
-    {
+    pub fn draw_access(&self, opacity: f32) -> RasterImage {
         let mut img = RasterImage::new(&*self.img);
         img.scalar_multiply(opacity);
-        for event in self.events.borrow_mut().iter()
-        {
-            match event
-            {
+        for event in self.events.borrow_mut().iter() {
+            match event {
                 Event::Read(x, y) => {
                     let old = self.img.get_pixel(*x, *y);
-                    img.set_pixel(*x, *y, RGB{r: 255,
-                        g: std::cmp::min(255, old.g as u32 + 20) as u8,
-                        b: std::cmp::min(255, old.b as u32 + 20) as u8});
+                    img.set_pixel(
+                        *x,
+                        *y,
+                        RGB {
+                            r: 255,
+                            g: std::cmp::min(255, old.g as u32 + 20) as u8,
+                            b: std::cmp::min(255, old.b as u32 + 20) as u8,
+                        },
+                    );
                 }
             }
         }
         img
     }
 
-    pub fn clear_events(&self)
-    {
+    pub fn clear_events(&self) {
         self.events.borrow_mut().clear()
     }
 }
@@ -56,6 +60,4 @@ impl Image for TrackedImage {
         self.events.borrow_mut().push(Event::Read(x, y));
         self.img.get_pixel(x, y)
     }
-
 }
-
