@@ -1,6 +1,4 @@
-// Roughly the same architecture as the C++ project.
-// Analyser does bisection to find the black borders.
-// Then sample in each led's rectangle.
+//! Find the borders that bound the non black region in an image.
 
 use crate::rectangle::Rectangle;
 use desktop_frame::{Image, RGB};
@@ -32,11 +30,14 @@ fn bisect(f: &dyn Fn(u32) -> bool, min: u32, max: u32) -> u32 {
     min
 }
 
+/// find the borders that define the useful region in this image.
 pub fn find_borders(image: &dyn Image, bisections_per_side: u32) -> Rectangle {
     let mut b: Rectangle = Default::default();
     use std::cmp::{max, min};
 
     // No idea if this is the fastest way to write it... but it is cool with the reduce.
+    // Notice the lambda changes between ==black and != black, this ensures that in a completely
+    // black situation, we pick the correct side to return.
     let bounds = (0..bisections_per_side)
         .map(|i| {
             let mut bisection_res: [u32; 4] = [0, 0, 0, 0];
@@ -98,6 +99,7 @@ pub fn find_borders(image: &dyn Image, bisections_per_side: u32) -> Rectangle {
     b.y_max = bounds[3];
 
     // But that causes problems if the image is completely black, as x_min then exceeds x_max.
+    // So here we fix that by ensuring x_min <= x_max, and y_min <= y_max.
     if b.x_min > b.x_max {
         b.x_min = b.x_max
     }
@@ -243,7 +245,7 @@ mod tests {
         track_results
             .write_bmp(&tmp_file("test_black.bmp"))
             .expect("Should succeed.");
-        println!("Borders: {:?}", b);
+        // println!("Borders: {:?}", b);
         assert_eq!(b.x_min, 959); // last index that is black
         assert_eq!(b.y_min, 539); // last index that is black.
         assert_eq!(b.x_max, 959); // last index that is not black.

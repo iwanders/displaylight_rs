@@ -1,5 +1,5 @@
-// Definition of the zones we can individually control on the led strip. Basically, this is the
-// mapping between physical leds and regions on the screen.
+//! Definition of the zones we can individually control on the led strip. Basically, this is the
+//! mapping between physical leds and regions on the screen.
 
 use crate::rectangle::Rectangle;
 
@@ -11,6 +11,7 @@ impl Zones {
     const HORIZONTAL: u32 = 73;
     const VERTICAL: u32 = 42;
 
+    /// Make the zones for the provided rectangle, horizontal depth and vertical depth.
     pub fn make_zones(
         rectangle: &Rectangle,
         horizontal_depth: u32,

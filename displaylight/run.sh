@@ -7,5 +7,5 @@ if [ $? -eq 1 ]; then
     cd $DIR/
     screen -dmS "displaylight" cargo run --release
 else
-    echo "already running, should be connecing now"
+    echo "already running, should be connecting now"
 fi

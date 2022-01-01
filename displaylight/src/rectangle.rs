@@ -1,3 +1,4 @@
+/// Represents a rectangle on a grid.
 #[derive(Debug, Default, Eq, PartialEq)]
 pub struct Rectangle {
     pub x_min: u32,

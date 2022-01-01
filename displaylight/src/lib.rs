@@ -1,3 +1,16 @@
+//! A crate to set leds to the same color as regions on the screen.
+//!
+//! The following happens in a loop:
+//!   - Retrieval of the image shown on the screen.
+//!   - Black border detection, if we have black borders we want to ignore this and get colors from the interesting part.
+//!   - Sample regions associated to each led.
+//!   - Set the leds to the average of the sampled colors.
+//!   - Sleep to ensure we match a certain update interval.
+//!
+//! What also happens is that if the resolution changes, the capture can be reconfigured based on a 
+//! priority list, this allows retrieving a specific monitor if there's a multi monitor setup.
+
+
 pub mod border_detection;
 pub mod rate_limiter;
 pub mod rectangle;
@@ -11,43 +24,66 @@ use rectangle::Rectangle;
 use serde::{Deserialize, Serialize};
 use std::error::Error;
 
+/// Capture specification, if `match_*` is populated and matches the resolution's value it will be
+/// considered to match and the capture will be setup according to the other fields.
 #[derive(Debug, PartialEq, Serialize, Deserialize, Default, Copy, Clone)]
 pub struct CaptureSpecification {
-    match_width: Option<u32>,
-    match_height: Option<u32>,
+
+    /// The resolution's width to match to.
+    pub match_width: Option<u32>,
+
+    /// The resolution's height to match to.
+    pub match_height: Option<u32>,
 
     #[serde(default)]
-    x: u32,
+    /// The x offset to apply for this specification.
+    pub x: u32,
+    /// The y offset to apply for this specification.
     #[serde(default)]
-    y: u32,
+    pub y: u32,
 
+    /// The width to apply for this specification, set to the resolutions' width - x if zero.
     #[serde(default)]
-    width: u32,
+    pub width: u32,
+    /// The height to apply for this specification, set to the resolutions' height - y if zero.
     #[serde(default)]
-    height: u32,
+    pub height: u32,
 
+    /// The display to set the capture setup to.
     #[serde(default)]
-    display: u32,
+    pub display: u32,
 }
 
+/// Configuration struct, specifying all the configurable properties of the displaylight struct..
 #[derive(Debug, PartialEq, Serialize, Deserialize, Default)]
 pub struct Config {
-    rate: f32,
-    port: String,
+    /// The update rate at which the loop should run in Hz.
+    pub rate: f32,
 
-    vertical_depth: u32,
-    horizontal_depth: u32,
+    /// The serial port path or name used to control the leds. Like "/dev/ttyACM0" or "COM5".
+    pub port: String,
 
-    sample_pixel_distance: u32,
+    /// The depth in pixels of the vertical cells at the top and bottom of the screen.
+    pub vertical_depth: u32,
 
-    edge_detection_bisect_count: u32,
+    /// The depth in pixels of the horizontal cells at the left and right of the screen.
+    pub horizontal_depth: u32,
 
-    limiting_factor: f32,
+    /// The distance between sampled pixels in the cells.
+    pub sample_pixel_distance: u32,
 
-    capture: Vec<CaptureSpecification>,
+    /// The number of bisections to perform on each frame's side to determine the bounds.
+    pub edge_detection_bisect_count: u32,
+
+    /// The limiting factor for the overall led brightness.
+    pub limiting_factor: f32,
+
+    /// A list of capture specifications, the first one to match will be used.
+    pub capture: Vec<CaptureSpecification>,
 }
 
-// Iterates through the specs to find the best one, augmends the missing or 0 values and returns it.
+/// Iterates through the specs to find the best one, augmends the missing or 0 values and returns it.
+/// See the documentation of [`CaptureSpecification`] for further information.
 fn get_config(width: u32, height: u32, specs: &[CaptureSpecification]) -> CaptureSpecification {
     for spec in specs.iter() {
         let mut matches = true;
@@ -84,6 +120,7 @@ fn get_config(width: u32, height: u32, specs: &[CaptureSpecification]) -> Captur
     }
 }
 
+/// DisplayLight object that will perform the loop to check the screen, analyse and update the leds.
 pub struct DisplayLight {
     config: Config,
     grabber: Box<dyn Grabber>,
@@ -94,6 +131,8 @@ pub struct DisplayLight {
 impl DisplayLight {
     const MAX_LEDS: usize = 228;
 
+    /// Instantiate a new instance using the provided configuration. This will try to connect to
+    /// the serial port immediately and returns failure if that doesn't succeed.
     pub fn new(config: Config) -> Result<DisplayLight, Box<dyn Error>> {
         Ok(DisplayLight {
             limiter: rate_limiter::Limiter::new(config.rate),
@@ -107,14 +146,21 @@ impl DisplayLight {
         self.lights.set_limit_factor(self.config.limiting_factor);
     }
 
+    /// Enter the main loop, this function will never return.
     pub fn run(&mut self) -> Result<(), Box<dyn Error>> {
         // Perform one time setup.
         self.setup();
 
+        // Create the canvas, container of current led pixels to be updated or reused.
         let mut canvas = [lights::RGB::default(); DisplayLight::MAX_LEDS];
 
+        // Sampler only updates based on the black border detection, cache it such that we can reuse
+        // it.
         let mut cached_sampler: Option<(Rectangle, sampler::Sampler)> = None;
+
+        // The resolution is used for the capture setup and config retrieval, store the old value.
         let mut cached_resolution: Option<Resolution> = None;
+
         loop {
             // First, check if the resolution of the desktop environment has changed, if so, act.
             let current_resolution = self.grabber.get_resolution();
@@ -135,6 +181,7 @@ impl DisplayLight {
                     config.width,
                     config.height,
                 );
+                // Store the current resolution.
                 cached_resolution = Some(current_resolution);
             }
 

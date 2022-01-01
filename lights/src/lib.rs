@@ -6,6 +6,7 @@ use serialport::SerialPort;
 
 pub use messages::{Config, RGB};
 
+/// Object to control led lights.
 pub struct Lights {
     port: Box<dyn SerialPort>,
     limit_factor: f32,
