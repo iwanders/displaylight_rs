@@ -31,13 +31,18 @@ fn bisect(f: &dyn Fn(u32) -> bool, min: u32, max: u32) -> u32 {
 }
 
 /// find the borders that define the useful region in this image.
-pub fn find_borders(image: &dyn Image, bisections_per_side: u32) -> Rectangle {
+/// 
+/// * `bisections_per_side` - The number of bisections to perform per side.
+/// * `only_rectangular` - If true, only returns a Some if the bisecions agreed on proper rectangle with straight edges.
+pub fn find_borders(image: &dyn Image, bisections_per_side: u32, only_rectangular: bool) -> Option<Rectangle> {
     let mut b: Rectangle = Default::default();
     use std::cmp::{max, min};
 
     // No idea if this is the fastest way to write it... but it is cool with the reduce.
     // Notice the lambda changes between ==black and != black, this ensures that in a completely
     // black situation, we pick the correct side to return.
+
+    let mut transitions: [u32; 4] = [0; 4];
     let bounds = (0..bisections_per_side)
         .map(|i| {
             let mut bisection_res: [u32; 4] = [0, 0, 0, 0];
@@ -72,6 +77,13 @@ pub fn find_borders(image: &dyn Image, bisections_per_side: u32) -> Rectangle {
             return bisection_res;
         })
         .reduce(|a, b| {
+            for i in 0..4
+            {
+                if a[i] != b[i]
+                {
+                    transitions[i] += 1;
+                }
+            }
             [
                 min(a[0], b[0]),
                 max(a[1], b[1]),
@@ -79,6 +91,13 @@ pub fn find_borders(image: &dyn Image, bisections_per_side: u32) -> Rectangle {
                 max(a[3], b[3]),
             ]
         });
+
+    // println!("transitions res: {:?}", transitions);
+    // Any more than 4 transitions means we have something that's not rectangular.
+    if only_rectangular && (transitions.iter().reduce(|a, b| { max(a, b) }).unwrap() >= &4)
+    {
+        return None
+    }
 
     let bounds = bounds.expect("Will always have a result.");
     // For x_min and y_min, add one if the alue is not zero, this ensures we start on the non-white
@@ -107,7 +126,7 @@ pub fn find_borders(image: &dyn Image, bisections_per_side: u32) -> Rectangle {
         b.y_min = b.y_max
     }
 
-    b
+    Some(b)
 }
 
 #[cfg(test)]
@@ -169,7 +188,7 @@ mod tests {
     #[test]
     fn test_fully_white() {
         let img = RasterImage::filled(100, 100, RGB::white());
-        let b = find_borders(&img, 5);
+        let b = find_borders(&img, 5, false).expect("Only rectangular is false.");
 
         assert_eq!(b.x_min, 0);
         assert_eq!(b.y_min, 0);
@@ -182,7 +201,7 @@ mod tests {
         let mut img = RasterImage::filled(100, 100, RGB { r: 0, g: 0, b: 0 });
         img.fill_rectangle(30, 80, 20, 70, RGB::yellow());
         let mut tracked = desktop_frame::tracked_image::TrackedImage::new(Box::new(img));
-        let b = find_borders(&tracked, 10);
+        let b = find_borders(&tracked, 10, false).expect("Only rectangular is false.");
         let mut track_results = tracked.draw_access(0.5);
         track_results.set_pixel(b.x_min, b.y_min, RGB::cyan());
         track_results.set_pixel(b.x_max, b.y_max, RGB::white());
@@ -201,7 +220,7 @@ mod tests {
         let mut img = RasterImage::filled(100, 100, RGB { r: 0, g: 0, b: 0 });
         img.fill_rectangle(0, 100, 20, 70, RGB::yellow());
         let mut tracked = desktop_frame::tracked_image::TrackedImage::new(Box::new(img));
-        let b = find_borders(&tracked, 10);
+        let b = find_borders(&tracked, 10, false).expect("Only rectangular is false.");
         let mut track_results = tracked.draw_access(0.5);
         track_results.set_pixel(b.x_min, b.y_min, RGB::cyan());
         track_results.set_pixel(b.x_max, b.y_max, RGB::white());
@@ -220,7 +239,7 @@ mod tests {
         let mut img = RasterImage::filled(100, 100, RGB { r: 0, g: 0, b: 0 });
         img.fill_rectangle(30, 80, 0, 100, RGB::yellow());
         let mut tracked = desktop_frame::tracked_image::TrackedImage::new(Box::new(img));
-        let b = find_borders(&tracked, 10);
+        let b = find_borders(&tracked, 10, false).expect("Only rectangular is false.");
         let mut track_results = tracked.draw_access(0.5);
         track_results.set_pixel(b.x_min, b.y_min, RGB::cyan());
         track_results.set_pixel(b.x_max, b.y_max, RGB::white());
@@ -238,7 +257,7 @@ mod tests {
     fn test_black() {
         let mut img = RasterImage::filled(1920, 1080, RGB { r: 0, g: 0, b: 0 });
         let mut tracked = desktop_frame::tracked_image::TrackedImage::new(Box::new(img));
-        let b = find_borders(&tracked, 10);
+        let b = find_borders(&tracked, 10, false).expect("Only rectangular is false.");
         let mut track_results = tracked.draw_access(0.5);
         track_results.set_pixel(b.x_min, b.y_min, RGB::cyan());
         track_results.set_pixel(b.x_max, b.y_max, RGB::white());
@@ -251,4 +270,32 @@ mod tests {
         assert_eq!(b.x_max, 959); // last index that is not black.
         assert_eq!(b.y_max, 539); // last index that is not black.
     }
+
+
+    #[test]
+    fn test_only_rectangular() {
+        let mut img = RasterImage::filled(100, 100, RGB { r: 0, g: 0, b: 0 });
+        img.fill_rectangle(20, 60, 20, 60, RGB::yellow());
+        img.fill_rectangle(40, 80, 40, 80, RGB::yellow());
+        let mut tracked = desktop_frame::tracked_image::TrackedImage::new(Box::new(img));
+        let b = find_borders(&tracked, 10, true);
+        let mut track_results = tracked.draw_access(0.5);
+        track_results
+            .write_ppm(&tmp_file("test_only_rectangular.ppm"))
+            .expect("Should succeed.");
+        // assert!(b.is_none());
+
+        let mut img = RasterImage::filled(100, 100, RGB { r: 0, g: 0, b: 0 });
+        img.fill_rectangle(10, 40, 30, 60, RGB::yellow());
+        img.fill_rectangle(30, 70, 20, 30, RGB::yellow());
+        img.fill_rectangle(60, 90, 30, 60, RGB::yellow());
+        let mut tracked = desktop_frame::tracked_image::TrackedImage::new(Box::new(img));
+        let b = find_borders(&tracked, 10, true);
+        let mut track_results = tracked.draw_access(0.5);
+        track_results
+            .write_ppm(&tmp_file("test_only_rectangular2.ppm"))
+            .expect("Should succeed.");
+        assert!(b.is_none());
+    }
+
 }

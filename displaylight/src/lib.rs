@@ -75,6 +75,9 @@ pub struct Config {
     /// The number of bisections to perform on each frame's side to determine the bounds.
     pub edge_detection_bisect_count: u32,
 
+    /// Only change detection rectangle if the detected borders are rectangular
+    pub edge_detection_rectangular_only: bool,
+
     /// The limiting factor for the overall led brightness.
     pub limiting_factor: f32,
 
@@ -201,23 +204,27 @@ impl DisplayLight {
 
             // Detect the black borders
             let borders =
-                border_detection::find_borders(&*img, self.config.edge_detection_bisect_count);
+                border_detection::find_borders(&*img, self.config.edge_detection_bisect_count, self.config.edge_detection_rectangular_only);
+            println!("Borders: {:?}", borders);
 
             // Border size changed, make a new sampler.
-            if cached_sampler.is_none() || cached_sampler.as_ref().unwrap().0 != borders {
-                // With the edges known, we can make the zones.
-                let zones = zones::Zones::make_zones(
-                    &borders,
-                    self.config.horizontal_depth,
-                    self.config.vertical_depth,
-                );
-                // println!("zones: {:?}", zones);
-                assert_eq!(zones.len(), DisplayLight::MAX_LEDS);
+            if let Some(borders) = borders
+            {
+                if cached_sampler.is_none() || cached_sampler.as_ref().unwrap().0 != borders {
+                    // With the edges known, we can make the zones.
+                    let zones = zones::Zones::make_zones(
+                        &borders,
+                        self.config.horizontal_depth,
+                        self.config.vertical_depth,
+                    );
+                    // println!("zones: {:?}", zones);
+                    assert_eq!(zones.len(), DisplayLight::MAX_LEDS);
 
-                // With the zones known, we can create the sampler.
-                let sampler =
-                    sampler::Sampler::make_sampler(&zones, self.config.sample_pixel_distance);
-                cached_sampler = Some((borders, sampler));
+                    // With the zones known, we can create the sampler.
+                    let sampler =
+                        sampler::Sampler::make_sampler(&zones, self.config.sample_pixel_distance);
+                    cached_sampler = Some((borders, sampler));
+                }
             }
 
             // With the sampler, we can now sample and get color values.
@@ -265,7 +272,7 @@ mod tests {
 
         // Detect the black borders
         let mut tracked = desktop_frame::tracked_image::TrackedImage::new(Box::new(img));
-        let b = border_detection::find_borders(&tracked, 5);
+        let b = border_detection::find_borders(&tracked, 5, false).expect("Only rectangular is false");
         let mut track_results = tracked.draw_access(0.5);
         track_results.set_pixel(b.x_min, b.y_min, RGB::cyan());
         track_results.set_pixel(b.x_max, b.y_max, RGB::white());
