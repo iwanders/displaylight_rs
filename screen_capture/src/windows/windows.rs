@@ -109,7 +109,7 @@ impl Image for ImageWin {
 // For d3d12 we could follow  https://github.com/microsoft/windows-samples-rs/blob/5d67b33e7115ec1dd4f8448301bf6ce794c93b5f/direct3d12/src/main.rs#L204-L234.
 
 #[derive(Default)]
-struct GrabberWin {
+struct CaptureWin {
     adaptor: Option<IDXGIAdapter1>,
     device: Option<ID3D11Device>,
     device_context: Option<ID3D11DeviceContext>,
@@ -119,7 +119,7 @@ struct GrabberWin {
     image: Option<ID3D11Texture2D>,
 }
 
-impl Drop for GrabberWin {
+impl Drop for CaptureWin {
     fn drop(&mut self) {}
 }
 
@@ -132,7 +132,7 @@ fn from_wide(arr: &[u16]) -> OsString {
     OsString::from_wide(&arr[..len])
 }
 
-impl GrabberWin {
+impl CaptureWin {
     fn init_adaptor(&mut self) -> Result<()> {
         // let (factory, device) = create_device().expect("Must have a device.");
         // let adaptor = get_hardware_adapter(&factory).expect("Must have an adaptor.");
@@ -285,8 +285,8 @@ impl GrabberWin {
         Ok(())
     }
 
-    pub fn new() -> GrabberWin {
-        let mut n: GrabberWin = Default::default();
+    pub fn new() -> CaptureWin {
+        let mut n: CaptureWin = Default::default();
         n.init_adaptor()
             .expect("Should have an adaptor and d3d11 device now.");
         n
@@ -451,13 +451,13 @@ impl GrabberWin {
     }
 }
 
-impl Grabber for GrabberWin {
+impl Capture for CaptureWin {
     fn capture_image(&mut self) -> bool {
-        let res = GrabberWin::capture(self);
+        let res = CaptureWin::capture(self);
         return res.is_ok();
     }
     fn get_image(&mut self) -> Box<dyn Image> {
-        Box::<ImageWin>::new(GrabberWin::get_image(self).expect("Should succeed"))
+        Box::<ImageWin>::new(CaptureWin::get_image(self).expect("Should succeed"))
     }
 
     fn get_resolution(&mut self) -> Resolution {
@@ -468,11 +468,11 @@ impl Grabber for GrabberWin {
     }
 
     fn prepare_capture(&mut self, display: u32, x: u32, y: u32, width: u32, height: u32) -> bool {
-        return GrabberWin::prepare(self, display, x, y, width, height);
+        return CaptureWin::prepare(self, display, x, y, width, height);
     }
 }
 
-pub fn get_grabber() -> Box<dyn Grabber> {
-    let mut z = Box::<GrabberWin>::new(GrabberWin::new());
+pub fn get_capture() -> Box<dyn Capture> {
+    let mut z = Box::<CaptureWin>::new(CaptureWin::new());
     z
 }

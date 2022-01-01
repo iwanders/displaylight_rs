@@ -53,8 +53,8 @@ impl Image for ImageX11 {
     }
 }
 
-/// Grabber struct for X11.
-struct GrabberX11 {
+/// Capture struct for X11.
+struct CaptureX11 {
     display: *mut Display,
     window: Window,
     image: Option<*mut XImage>,
@@ -63,7 +63,7 @@ struct GrabberX11 {
     pos_y: u32,
 }
 
-impl Drop for GrabberX11 {
+impl Drop for CaptureX11 {
     fn drop(&mut self) {
         // Clean up the memory correctly.
         unsafe {
@@ -74,15 +74,15 @@ impl Drop for GrabberX11 {
     }
 }
 
-impl GrabberX11 {
-    pub fn new() -> GrabberX11 {
+impl CaptureX11 {
+    pub fn new() -> CaptureX11 {
         unsafe {
             let display = XOpenDisplay(0 as *const libc::c_char);
             if XShmQueryExtension(display) == 0 {
                 panic!("We really need the xshared memory extension. Bailing out.");
             }
             let window = XRootWindow(display, XDefaultScreen(display));
-            GrabberX11 {
+            CaptureX11 {
                 display,
                 window,
                 image: None,
@@ -161,7 +161,7 @@ impl GrabberX11 {
     }
 }
 
-impl Grabber for GrabberX11 {
+impl Capture for CaptureX11 {
     fn capture_image(&mut self) -> bool {
         if self.image.is_none() {
             return false;
@@ -216,7 +216,7 @@ impl Grabber for GrabberX11 {
     }
 
     fn prepare_capture(&mut self, _display: u32, x: u32, y: u32, width: u32, height: u32) -> bool {
-        return GrabberX11::prepare(self, x, y, width, height);
+        return CaptureX11::prepare(self, x, y, width, height);
     }
 }
 
@@ -225,11 +225,11 @@ unsafe extern "C" fn error_handler(_display: *mut Display, event: *mut XErrorEve
     return 0;
 }
 
-pub fn get_grabber() -> Box<dyn Grabber> {
+pub fn get_capture() -> Box<dyn Capture> {
     unsafe {
         XSetErrorHandler(error_handler);
     }
-    let mut z = Box::<GrabberX11>::new(GrabberX11::new());
+    let mut z = Box::<CaptureX11>::new(CaptureX11::new());
     z.prepare(0, 0, 0, 0);
     z
 }

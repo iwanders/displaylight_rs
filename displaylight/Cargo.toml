@@ -4,7 +4,7 @@ version = "0.0.0"
 edition = "2021"
 
 [dependencies]
-desktop_frame = { path = "../desktop_frame" }
+desktop_frame = { path = "../screen_capture" }
 lights = { path = "../lights" }
 clap = "2.34.0"
 

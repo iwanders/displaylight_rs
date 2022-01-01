@@ -5,15 +5,15 @@ pub mod interface;
 pub mod raster_image;
 pub mod tracked_image;
 
-pub use interface::{Grabber, Image, Resolution, RGB};
+pub use interface::{Capture, Image, Resolution, RGB};
 
 #[cfg_attr(target_os = "linux", path = "./linux/linux.rs")]
 #[cfg_attr(target_os = "windows", path = "./windows/windows.rs")]
 mod backend;
 
 /// Get a new instance of the desktop frame grabber for this platform.
-pub fn get_grabber() -> Box<dyn Grabber> {
-    return backend::get_grabber();
+pub fn get_capture() -> Box<dyn Capture> {
+    return backend::get_capture();
 }
 
 /// Reads a ppm image from disk. (or rather ppms written by [`Image::write_ppm`]).

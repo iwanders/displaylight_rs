@@ -17,7 +17,7 @@ pub mod rectangle;
 pub mod sampler;
 pub mod zones;
 
-use desktop_frame::{Grabber, Resolution};
+use desktop_frame::{Capture, Resolution};
 use lights;
 use rectangle::Rectangle;
 
@@ -123,7 +123,7 @@ fn get_config(width: u32, height: u32, specs: &[CaptureSpecification]) -> Captur
 /// DisplayLight object that will perform the loop to check the screen, analyse and update the leds.
 pub struct DisplayLight {
     config: Config,
-    grabber: Box<dyn Grabber>,
+    grabber: Box<dyn Capture>,
     lights: lights::Lights,
     limiter: rate_limiter::Limiter,
 }
@@ -138,7 +138,7 @@ impl DisplayLight {
             limiter: rate_limiter::Limiter::new(config.rate),
             lights: lights::Lights::new(&config.port)?,
             config: config,
-            grabber: desktop_frame::get_grabber(),
+            grabber: desktop_frame::get_capture(),
         })
     }
 

@@ -138,7 +138,7 @@ impl Clone for Box<dyn Image> {
 }
 
 /// Trait to which the desktop frame grabbers adhere.
-pub trait Grabber {
+pub trait Capture {
     /// Capture the frame into an internal buffer, creating a 'snapshot'
     fn capture_image(&mut self) -> bool;
 
