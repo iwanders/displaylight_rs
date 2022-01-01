@@ -18,7 +18,7 @@ sample_pixel_distance: 15
 edge_detection_bisect_count: 8
 
 # Only allow edge change if the bisection result was a rectangle with straight borders.
-edge_detection_rectangular_only: true
+edge_detection_rectangular_only: false
 
 # Limiting factor between 0.0 and 1.0, 1.0 allows full brightness. 0.5 specifies half brightness.
 limiting_factor: 0.5
