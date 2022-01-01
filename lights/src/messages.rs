@@ -197,7 +197,7 @@ impl Debug for Message {
 }
 
 impl Message {
-    pub fn to_bytes(&self) -> [u8; 64] {
+    pub fn as_bytes(&self) -> [u8; 64] {
         // Lets just do this here, alternatively we could pull in https://github.com/iwanders/huntsman/tree/master/struct_helper
         let mut res = [0u8; 64];
         unsafe {
@@ -227,7 +227,7 @@ mod tests {
         m.payload.config.gamma_r = 0.33333;
         m.payload.config.gamma_g = 1.0;
         m.payload.config.gamma_b = 0.6;
-        let b = m.to_bytes();
+        let b = m.as_bytes();
         let expected = [
             1u8, 0, 0, 0, 239, 190, 173, 222, 4, 3, 2, 1, 244, 243, 242, 241, 59, 170, 170, 62, 0,
             0, 128, 63, 154, 153, 25, 63, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -252,7 +252,7 @@ mod tests {
         }
         msg.payload.color.color = colors;
 
-        let b = msg.to_bytes();
+        let b = msg.as_bytes();
         let expected = [
             2u8, 0, 0, 0, 2, 1, 171, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17,
             18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39,

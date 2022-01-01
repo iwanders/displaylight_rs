@@ -78,8 +78,8 @@ pub trait Image {
                 use std::fmt::Write;
                 write!(v, "{} {} {} ", color.r, color.g, color.b).unwrap();
             }
-            file.write(v.as_ref())?;
-            file.write(b"\n")?;
+            file.write_all(v.as_ref())?;
+            file.write_all(b"\n")?;
         }
         Ok(())
     }
@@ -92,7 +92,7 @@ pub trait Image {
         let mut file = File::create(filename)?;
         let width = self.get_width();
         let height = self.get_height();
-        let pad = ((width as i32) * -3 & 3) as u32;
+        let pad = (((width as i32) * -3) & 3) as u32;
         let total = 54 + 3 * width * height + pad * height;
         let head: [u32; 7] = [total, 0, 54, 40, width, height, (24 << 16) | 1];
         let head_left = [0u32; 13 - 7];
@@ -119,7 +119,7 @@ pub trait Image {
             // populate the row
             for x in 0..width {
                 let color = self.get_pixel(x, height - y - 1);
-                row[(x * 3 + 0) as usize] = color.b;
+                row[(x * 3) as usize] = color.b;
                 row[(x * 3 + 1) as usize] = color.g;
                 row[(x * 3 + 2) as usize] = color.r;
             }
@@ -160,6 +160,6 @@ pub trait Capture {
         _width: u32,
         _height: u32,
     ) -> bool {
-        return false;
+        false
     }
 }

@@ -1,6 +1,5 @@
-use screen_capture;
-
 use std::env::temp_dir;
+
 fn main() {
     let mut grabber = screen_capture::get_capture();
 

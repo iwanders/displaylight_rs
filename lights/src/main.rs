@@ -1,4 +1,3 @@
-use lights;
 use lights::RGB;
 use std::error::Error;
 
@@ -9,8 +8,10 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let mut control = lights::Lights::new("/dev/ttyACM0")?;
 
-    let mut config = lights::Config::default();
-    config.decay_amount = 1;
+    let config = lights::Config {
+        decay_amount: 1,
+        ..Default::default()
+    };
     control.set_config(&config)?;
 
     for _ in 0..100 {

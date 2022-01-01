@@ -1,5 +1,4 @@
 #![allow(non_camel_case_types, non_snake_case, non_upper_case_globals)]
-use libc;
 
 pub type key_t = i32;
 pub const IPC_PRIVATE: key_t = 0;

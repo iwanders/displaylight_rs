@@ -16,7 +16,6 @@ pub mod rectangle;
 pub mod sampler;
 pub mod zones;
 
-use lights;
 use rectangle::Rectangle;
 use screen_capture::{Capture, Resolution};
 
@@ -141,7 +140,7 @@ impl DisplayLight {
         Ok(DisplayLight {
             limiter: rate_limiter::Limiter::new(config.rate),
             lights: lights::Lights::new(&config.port)?,
-            config: config,
+            config,
             grabber: screen_capture::get_capture(),
         })
     }

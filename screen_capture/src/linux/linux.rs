@@ -44,11 +44,11 @@ impl Image for ImageX11 {
                 data.offset((y * width * stride + x * stride).try_into().unwrap()),
             );
             let masked = as_integer & 0x00FFFFFF;
-            return RGB {
+            RGB {
                 r: ((masked >> 16) & 0xFF) as u8,
                 g: ((masked >> 8) & 0xFF) as u8,
                 b: (masked & 0xFF) as u8,
-            };
+            }
         }
     }
 }
@@ -77,7 +77,7 @@ impl Drop for CaptureX11 {
 impl CaptureX11 {
     pub fn new() -> CaptureX11 {
         unsafe {
-            let display = XOpenDisplay(0 as *const libc::c_char);
+            let display = XOpenDisplay(std::ptr::null::<libc::c_char>());
             if XShmQueryExtension(display) == 0 {
                 panic!("We really need the xshared memory extension. Bailing out.");
             }
@@ -130,7 +130,7 @@ impl CaptureX11 {
                 attributes.visual,
                 attributes.depth as u32,
                 ZPixmap,
-                0 as *mut libc::c_char,
+                std::ptr::null_mut::<libc::c_char>(),
                 &mut self.shminfo,
                 width as u32,
                 height as u32,
@@ -147,7 +147,7 @@ impl CaptureX11 {
             );
 
             (*ximage).data = std::mem::transmute::<*mut libc::c_void, *mut libc::c_char>(
-                shm::shmat(self.shminfo.shmid, 0 as *const libc::c_void, 0),
+                shm::shmat(self.shminfo.shmid, std::ptr::null_mut::<libc::c_void>(), 0),
             );
             self.shminfo.shmaddr = (*ximage).data;
             self.shminfo.readOnly = 0;
@@ -178,7 +178,7 @@ impl Capture for CaptureX11 {
                 AllPlanes,
             );
         }
-        return z;
+        z
     }
     fn get_image(&mut self) -> Box<dyn Image> {
         if self.image.is_some() {
@@ -216,13 +216,13 @@ impl Capture for CaptureX11 {
     }
 
     fn prepare_capture(&mut self, _display: u32, x: u32, y: u32, width: u32, height: u32) -> bool {
-        return CaptureX11::prepare(self, x, y, width, height);
+        CaptureX11::prepare(self, x, y, width, height)
     }
 }
 
 unsafe extern "C" fn error_handler(_display: *mut Display, event: *mut XErrorEvent) -> i32 {
     println!("Error: {:?}", event);
-    return 0;
+    0
 }
 
 pub fn get_capture() -> Box<dyn Capture> {

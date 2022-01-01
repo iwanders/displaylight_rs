@@ -4,7 +4,7 @@
     non_upper_case_globals,
     dead_code
 )]
-use libc;
+#![allow(clippy::upper_case_acronyms)]
 // Minimal Rust bindings for the X11 parts we need. Implemented from the X11 headers which are
 // Licensed under the following license.
 /*
@@ -113,7 +113,7 @@ impl Default for XWindowAttributes {
             height: 0,
             border_width: 0,
             depth: 0,
-            visual: 0 as *mut Visual,
+            visual: std::ptr::null_mut::<Visual>(),
             root: 0,
             class: 0,
             bit_gravity: 0,
@@ -122,14 +122,14 @@ impl Default for XWindowAttributes {
             backing_planes: 0,
             backing_pixel: 0,
             save_under: 0,
-            colormap: 0 as Colormap,
+            colormap: 0, // as Colormap,
             map_installed: 0,
             map_state: 0,
             all_event_masks: 0,
             your_event_mask: 0,
             do_not_propagate_mask: 0,
             override_redirect: 0,
-            screen: 0 as *mut Screen,
+            screen: std::ptr::null_mut::<Screen>(),
         }
     }
 }
@@ -189,7 +189,7 @@ impl Default for XShmSegmentInfo {
         XShmSegmentInfo {
             shmseg: 0,
             shmid: 0,
-            shmaddr: 0 as *mut libc::c_char,
+            shmaddr: std::ptr::null_mut::<libc::c_char>(),
             readOnly: 0,
         }
     }

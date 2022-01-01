@@ -78,7 +78,7 @@ pub fn find_borders(
             );
 
             // println!("Bisection res: {:?}", bisection_res);
-            return bisection_res;
+            bisection_res
         })
         .reduce(|a, b| {
             for i in 0..4 {

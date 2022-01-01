@@ -35,9 +35,9 @@ impl Zones {
         for led in 0..Zones::LEDS {
             let (x_min, x_max, y_min, y_max);
             if led < 42 {
-                let pos = led - 0;
+                let pos = led;
                 // left side.
-                x_min = rectangle.x_min + 0;
+                x_min = rectangle.x_min;
                 x_max = rectangle.x_min + horizontal_depth;
                 y_min = rectangle.y_min + pos * vertical_step;
                 y_max = rectangle.y_min + (pos + 1) * vertical_step;
@@ -66,7 +66,7 @@ impl Zones {
                 x_min = rectangle.x_min + width - horizontal_depth;
                 x_max = rectangle.x_min + width;
                 y_min = rectangle.y_min + height - (pos + 1) * vertical_step;
-                y_max = rectangle.y_min + height - (pos + 0) * vertical_step;
+                y_max = rectangle.y_min + height - (pos) * vertical_step;
                 res.push(Rectangle {
                     x_min,
                     x_max,
@@ -77,8 +77,8 @@ impl Zones {
                 // top side
                 let pos = led - 156;
                 x_min = rectangle.x_min + width - (pos + 1) * horizontal_step;
-                x_max = rectangle.x_min + width - (pos + 0) * horizontal_step;
-                y_min = rectangle.y_min + 0;
+                x_max = rectangle.x_min + width - (pos) * horizontal_step;
+                y_min = rectangle.y_min;
                 y_max = rectangle.y_min + vertical_depth;
                 res.push(Rectangle {
                     x_min,

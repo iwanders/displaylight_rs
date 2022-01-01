@@ -1,8 +1,5 @@
 use displaylight::{Config, DisplayLight};
-use lights;
-
 use std::error::Error;
-
 use std::path::{Path, PathBuf};
 
 extern crate clap;
@@ -39,7 +36,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         // This is mostly just for development conveniency.
         let path = PathBuf::from("config").join(format!("{}.yaml", std::env::consts::OS));
         if path.exists() {
-            config_path = Some(path.to_path_buf());
+            config_path = Some(path);
         }
     }
 

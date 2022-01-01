@@ -20,7 +20,7 @@ impl RasterImage {
                 res.data[y as usize][x as usize] = img.get_pixel(x, y);
             }
         }
-        return res;
+        res
     }
 
     /// Create a new raster image of specified width and height, filled with the provided color.
@@ -46,7 +46,7 @@ impl RasterImage {
     }
 
     /// Create a raster image from the provided two dimension vector of pixels.
-    pub fn from_2d_vec(data: &Vec<Vec<RGB>>) -> RasterImage {
+    pub fn from_2d_vec(data: &[Vec<RGB>]) -> RasterImage {
         RasterImage {
             data: data.to_vec(),
         }
@@ -99,16 +99,16 @@ impl RasterImage {
 
 impl Image for RasterImage {
     fn get_width(&self) -> u32 {
-        if self.data.len() == 0 {
+        if self.data.is_empty() {
             return 0;
         }
-        return self.data[0].len().try_into().unwrap();
+        self.data[0].len().try_into().unwrap()
     }
     fn get_height(&self) -> u32 {
-        return self.data.len().try_into().unwrap();
+        self.data.len().try_into().unwrap()
     }
     fn get_pixel(&self, x: u32, y: u32) -> RGB {
-        return self.data[y as usize][x as usize];
+        self.data[y as usize][x as usize]
     }
 }
 
