@@ -2,6 +2,8 @@
 name = "displaylight"
 version = "0.0.0"
 edition = "2021"
+authors = ["Ivor Wanders <ivor@iwanders.net>"]
+license = "MIT OR Apache-2.0"
 
 [dependencies]
 screen_capture = { path = "../screen_capture" }
