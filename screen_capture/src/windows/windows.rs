@@ -473,6 +473,6 @@ impl Capture for CaptureWin {
 }
 
 pub fn get_capture() -> Box<dyn Capture> {
-    let mut z = Box::<CaptureWin>::new(CaptureWin::new());
+    let z = Box::<CaptureWin>::new(CaptureWin::new());
     z
 }

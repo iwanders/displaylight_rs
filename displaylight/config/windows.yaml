@@ -18,7 +18,7 @@ sample_pixel_distance: 15
 edge_detection_bisect_count: 8
 
 # Only allow edge change if the bisection result was a rectangle with straight borders.
-edge_detection_rectangular_only: false
+edge_detection_rectangular_only: true
 
 # If edge detection is disabled, the full width and height of the image is always used.
 edge_detection_enable: true
