@@ -7,9 +7,8 @@
 //!   - Set the leds to the average of the sampled colors.
 //!   - Sleep to ensure we match a certain update interval.
 //!
-//! What also happens is that if the resolution changes, the capture can be reconfigured based on a 
+//! What also happens is that if the resolution changes, the capture can be reconfigured based on a
 //! priority list, this allows retrieving a specific monitor if there's a multi monitor setup.
-
 
 pub mod border_detection;
 pub mod rate_limiter;
@@ -17,9 +16,9 @@ pub mod rectangle;
 pub mod sampler;
 pub mod zones;
 
-use screen_capture::{Capture, Resolution};
 use lights;
 use rectangle::Rectangle;
+use screen_capture::{Capture, Resolution};
 
 use serde::{Deserialize, Serialize};
 use std::error::Error;
@@ -28,7 +27,6 @@ use std::error::Error;
 /// considered to match and the capture will be setup according to the other fields.
 #[derive(Debug, PartialEq, Serialize, Deserialize, Default, Copy, Clone)]
 pub struct CaptureSpecification {
-
     /// The resolution's width to match to.
     pub match_width: Option<u32>,
 
@@ -75,8 +73,11 @@ pub struct Config {
     /// The number of bisections to perform on each frame's side to determine the bounds.
     pub edge_detection_bisect_count: u32,
 
-    /// Only change detection rectangle if the detected borders are rectangular
+    /// Only change detection rectangle if the detected borders are rectangular.
     pub edge_detection_rectangular_only: bool,
+
+    /// If false, always use the full width and height of the image.
+    pub edge_detection_enable: bool,
 
     /// The limiting factor for the overall led brightness.
     pub limiting_factor: f32,
@@ -202,15 +203,27 @@ impl DisplayLight {
             // Then, we can grab the actual image.
             let img = self.grabber.get_image();
 
-            // Detect the black borders
-            let borders =
-                border_detection::find_borders(&*img, self.config.edge_detection_bisect_count, self.config.edge_detection_rectangular_only);
-            // println!("Borders: {:?}", borders);
+            // Detect the black borders if we are configured to do so.
+            let borders;
+            if self.config.edge_detection_enable {
+                borders = border_detection::find_borders(
+                    &*img,
+                    self.config.edge_detection_bisect_count,
+                    self.config.edge_detection_rectangular_only,
+                );
+            } else {
+                borders = Some(Rectangle {
+                    x_min: 0,
+                    y_min: 0,
+                    x_max: img.get_width() - 1,
+                    y_max: img.get_height() - 1,
+                });
+            }
 
             // Border size changed, make a new sampler.
-            if let Some(borders) = borders
-            {
+            if let Some(borders) = borders {
                 if cached_sampler.is_none() || cached_sampler.as_ref().unwrap().0 != borders {
+                    // println!("Borders: {:?}", borders);
                     // With the edges known, we can make the zones.
                     let zones = zones::Zones::make_zones(
                         &borders,
@@ -272,7 +285,8 @@ mod tests {
 
         // Detect the black borders
         let tracked = screen_capture::tracked_image::TrackedImage::new(Box::new(img));
-        let b = border_detection::find_borders(&tracked, 5, false).expect("Only rectangular is false");
+        let b =
+            border_detection::find_borders(&tracked, 5, false).expect("Only rectangular is false");
         let mut track_results = tracked.draw_access(0.5);
         track_results.set_pixel(b.x_min, b.y_min, RGB::cyan());
         track_results.set_pixel(b.x_max, b.y_max, RGB::white());

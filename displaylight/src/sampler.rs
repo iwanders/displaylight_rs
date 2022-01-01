@@ -1,7 +1,7 @@
 //! A struct that efficiently samples the image and calculates averaged values.
 use crate::rectangle::Rectangle;
-use screen_capture::{Image, RGB};
 use lights::RGB as lRGB;
+use screen_capture::{Image, RGB};
 
 #[derive(Copy, Clone, Debug)]
 struct Index {
@@ -15,7 +15,7 @@ pub struct Sampler {
 }
 
 impl Sampler {
-    /// Make a sampler that's ready to 
+    /// Make a sampler that's ready to
     pub fn make_sampler(zones: &[Rectangle], distance_between_samples: u32) -> Sampler {
         // Prepares indices for sampling.
         let mut sampler: Sampler = Sampler { indices: vec![] };

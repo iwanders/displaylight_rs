@@ -31,10 +31,14 @@ fn bisect(f: &dyn Fn(u32) -> bool, min: u32, max: u32) -> u32 {
 }
 
 /// find the borders that define the useful region in this image.
-/// 
+///
 /// * `bisections_per_side` - The number of bisections to perform per side.
 /// * `only_rectangular` - If true, only returns a Some if the bisecions agreed on proper rectangle with straight edges.
-pub fn find_borders(image: &dyn Image, bisections_per_side: u32, only_rectangular: bool) -> Option<Rectangle> {
+pub fn find_borders(
+    image: &dyn Image,
+    bisections_per_side: u32,
+    only_rectangular: bool,
+) -> Option<Rectangle> {
     let mut b: Rectangle = Default::default();
     use std::cmp::{max, min};
 
@@ -77,10 +81,8 @@ pub fn find_borders(image: &dyn Image, bisections_per_side: u32, only_rectangula
             return bisection_res;
         })
         .reduce(|a, b| {
-            for i in 0..4
-            {
-                if a[i] != b[i]
-                {
+            for i in 0..4 {
+                if a[i] != b[i] {
                     transitions[i] += 1;
                 }
             }
@@ -94,9 +96,8 @@ pub fn find_borders(image: &dyn Image, bisections_per_side: u32, only_rectangula
 
     // println!("transitions res: {:?}", transitions);
     // Any more than 4 transitions means we have something that's not rectangular.
-    if only_rectangular && (transitions.iter().reduce(|a, b| { max(a, b) }).unwrap() >= &4)
-    {
-        return None
+    if only_rectangular && (transitions.iter().reduce(|a, b| max(a, b)).unwrap() >= &4) {
+        return None;
     }
 
     let bounds = bounds.expect("Will always have a result.");
@@ -271,7 +272,6 @@ mod tests {
         assert_eq!(b.y_max, 539); // last index that is not black.
     }
 
-
     #[test]
     fn test_only_rectangular() {
         let mut img = RasterImage::filled(100, 100, RGB { r: 0, g: 0, b: 0 });
@@ -297,5 +297,4 @@ mod tests {
             .expect("Should succeed.");
         assert!(b.is_none());
     }
-
 }

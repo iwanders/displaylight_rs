@@ -32,7 +32,6 @@ impl Limiter {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -41,18 +40,17 @@ mod tests {
     fn test_limiter() {
         let mut limiter = Limiter::new(10.0);
         let mut t_old = Instant::now();
-        for _i in 0..10
-        {
+        for _i in 0..10 {
             limiter.sleep();
             let t_new = Instant::now();
 
             // println!("Time difference: {:?}", t_new - t_old);
             let desired: f32 = 0.1;
             const WITHIN: f32 = 0.05;
-            assert!((((t_new - t_old).as_secs_f32()  - desired).abs()) <  WITHIN);
+            assert!((((t_new - t_old).as_secs_f32() - desired).abs()) < WITHIN);
             t_old = t_new;
 
-            sleep(Duration::from_secs_f32(0.05));  // sleep some extra here to ensure we do 'work'.
+            sleep(Duration::from_secs_f32(0.05)); // sleep some extra here to ensure we do 'work'.
         }
     }
 }
