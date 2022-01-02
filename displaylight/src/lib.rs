@@ -69,6 +69,10 @@ pub struct Config {
     /// The distance between sampled pixels in the cells.
     pub sample_pixel_distance: u32,
 
+    /// Whether or not to diagonalize the points to be sampled. This attempts to avoid the sample
+    /// points making horizontal and vertical lines.
+    pub sample_diagonalize_points: bool,
+
     /// The number of bisections to perform on each frame's side to determine the bounds.
     pub edge_detection_bisect_count: u32,
 
@@ -233,8 +237,11 @@ impl DisplayLight {
                     assert_eq!(zones.len(), DisplayLight::MAX_LEDS);
 
                     // With the zones known, we can create the sampler.
-                    let sampler =
-                        sampler::Sampler::make_sampler(&zones, self.config.sample_pixel_distance);
+                    let sampler = sampler::Sampler::make_sampler(
+                        &zones,
+                        self.config.sample_pixel_distance,
+                        self.config.sample_diagonalize_points,
+                    );
                     cached_sampler = Some((borders, sampler));
                 }
             }
@@ -294,11 +301,11 @@ mod tests {
             .expect("Should succeed.");
 
         // With the edges known, we can make the zones.
-        let zones = zones::Zones::make_zones(&b, 100, 100);
+        let zones = zones::Zones::make_zones(&b, 200, 200);
         assert_eq!(zones.len(), 228);
 
         // With the zones known, we can create the sampler.
-        let sampler = sampler::Sampler::make_sampler(&zones, 10);
+        let sampler = sampler::Sampler::make_sampler(&zones, 15, true);
 
         // With the sampler, we can now sample and get color values.
         tracked.clear_events();

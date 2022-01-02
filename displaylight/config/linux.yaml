@@ -14,6 +14,10 @@ horizontal_depth: 200
 # Distance between pixels to be sampled.
 sample_pixel_distance: 15
 
+# Whether or not to diagonalize the points to be sampled. This attempts to avoid the sample
+# points making horizontal and vertical lines.
+sample_diagonalize_points: true
+
 # Number of bisections to perform per side.
 edge_detection_bisect_count: 8
 
