@@ -10,3 +10,9 @@ members = [
 
 [profile.release]
 opt-level = 3
+
+[profile.firmware]
+inherits = "release"
+codegen-units = 1
+debug = true
+lto = true
