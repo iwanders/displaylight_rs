@@ -4,6 +4,7 @@ members = [
     "screen_capture",
     "displaylight",
     "lights",
+    "firmware",
 ]
 
 
