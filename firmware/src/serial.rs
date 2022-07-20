@@ -21,10 +21,12 @@ use usbd_serial::{SerialPort, USB_CLASS_CDC};
 
 use core::cell::RefCell;
 use cortex_m::interrupt::Mutex;
+
 static SHARED: Mutex<RefCell<Option<usize>>> = Mutex::new(RefCell::new(None));
 
-pub struct Serial {
-}
+use crate::ringbuffer;
+
+pub struct Serial{}
 
 impl Serial {
     pub fn new(usb: Peripheral) -> Self {

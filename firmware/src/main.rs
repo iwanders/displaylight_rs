@@ -9,9 +9,11 @@
 //! the reference manual for an explanation. This is not an issue on the blue pill.
 
 // #![deny(unsafe_code)]
-#![no_std]
-#![no_main]
 
+#![no_std]
+#![cfg_attr(not(test), no_main)]
+
+#[cfg(not(test))]
 use panic_halt as _;
 
 use nb::block;
@@ -34,8 +36,9 @@ use stm32f1xx_hal::pac::{self, interrupt, Interrupt, NVIC};
 
 // use cortex_m_rt::entry;
 mod serial;
+mod ringbuffer;
 
-#[entry]
+#[cfg_attr(not(test), entry)]
 fn main() -> ! {
     // Get access to the core peripherals from the cortex-m crate
     let cp = cortex_m::Peripherals::take().unwrap();
