@@ -20,7 +20,7 @@ use nb::block;
 
 use cortex_m::asm::{delay, wfi};
 use cortex_m_rt::entry;
-use stm32f1xx_hal::{ prelude::*, timer::Timer};
+use stm32f1xx_hal::{prelude::*, timer::Timer};
 
 // for serial.
 // use stm32f1xx_hal::usb::{Peripheral, UsbBus};
@@ -30,13 +30,13 @@ use stm32f1xx_hal::{ prelude::*, timer::Timer};
 use embedded_hal::digital::v2::OutputPin;
 use embedded_hal::digital::v2::PinState::{High, Low};
 
-use stm32f1xx_hal::usb::{Peripheral};
-use stm32f1xx_hal::prelude::*;
 use stm32f1xx_hal::pac::{self, interrupt, Interrupt, NVIC};
+use stm32f1xx_hal::prelude::*;
+use stm32f1xx_hal::usb::Peripheral;
 
 // use cortex_m_rt::entry;
-mod serial;
 mod ringbuffer;
+mod serial;
 
 #[cfg_attr(not(test), entry)]
 fn main() -> ! {
@@ -85,7 +85,6 @@ fn main() -> ! {
     usb_dp.set_low();
     delay(clocks.sysclk().raw() / 100);
 
-
     let usb_dm = gpioa.pa11;
     let usb_dp = usb_dp.into_floating_input(&mut gpioa.crh);
 
@@ -101,4 +100,3 @@ fn main() -> ! {
         // wfi();
     }
 }
-

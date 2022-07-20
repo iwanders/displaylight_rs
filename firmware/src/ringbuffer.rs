@@ -1,5 +1,4 @@
-
-use core::marker::{Copy};
+use core::marker::Copy;
 
 pub enum RingBufferState {
     WriteOverrun,
@@ -7,14 +6,14 @@ pub enum RingBufferState {
 
 /// Simple ringbuffer.
 pub struct RingBuffer<T: Copy + Default, const N: usize> {
-    array:  [T; N],
+    array: [T; N],
     read_pos: usize,
     write_pos: usize,
 }
 
-impl<T: Copy + Default, const N: usize>  RingBuffer<T, { N }> {
+impl<T: Copy + Default, const N: usize> RingBuffer<T, { N }> {
     pub fn new() -> Self {
-        RingBuffer::<T, { N }>{
+        RingBuffer::<T, { N }> {
             array: [Default::default(); N],
             read_pos: 0,
             write_pos: 0,
@@ -47,14 +46,14 @@ impl<T: Copy + Default, const N: usize>  RingBuffer<T, { N }> {
     /// Advance write index by certain value.
     pub fn write_advance(&mut self, count: usize) -> Result<(), RingBufferState> {
         if (self.write_pos < self.read_pos) {
-            if ((self.write_pos + count)) >= self.read_pos {
-                return Err(RingBufferState::WriteOverrun)
+            if (self.write_pos + count) >= self.read_pos {
+                return Err(RingBufferState::WriteOverrun);
             }
         } else {
             // read_pos <= write_pos
             let allowable = (N - self.write_pos) + self.read_pos;
             if (self.write_pos + count) > allowable {
-                return Err(RingBufferState::WriteOverrun)
+                return Err(RingBufferState::WriteOverrun);
             }
         }
         self.write_pos = (self.write_pos + count) % N;
@@ -72,32 +71,29 @@ impl<T: Copy + Default, const N: usize>  RingBuffer<T, { N }> {
     }
 }
 
-
 #[cfg(test)]
-mod tests{
-use super::*;
-#[test]
-fn foo()
-{
-    let mut z = RingBuffer::<u8, 8>::new();
-    assert_eq!(z.read_available(), 0);
-    assert_eq!(z.write_slice_mut().len(), 8);
-    assert_eq!(z.read_value().is_none(), true);
+mod tests {
+    use super::*;
+    #[test]
+    fn foo() {
+        let mut z = RingBuffer::<u8, 8>::new();
+        assert_eq!(z.read_available(), 0);
+        assert_eq!(z.write_slice_mut().len(), 8);
+        assert_eq!(z.read_value().is_none(), true);
 
-    let mut w = z.write_slice_mut();
+        let mut w = z.write_slice_mut();
 
-    w[0] = 0;
-    w[1] = 1;
-    assert_eq!(z.write_advance(2).is_ok(), true);
-    assert_eq!(z.read_available(), 2);
-    assert_eq!(z.write_slice_mut().len(), 6);
-    
-    let v0 = z.read_value();
-    assert_eq!(v0.is_some(), true);
-    assert_eq!(v0.unwrap(), 0);
-    assert_eq!(z.read_available(), 1);
-    // slice doesn't change, consecutive is only to the wrap.
-    assert_eq!(z.write_slice_mut().len(), 6);
-    
-}
+        w[0] = 0;
+        w[1] = 1;
+        assert_eq!(z.write_advance(2).is_ok(), true);
+        assert_eq!(z.read_available(), 2);
+        assert_eq!(z.write_slice_mut().len(), 6);
+
+        let v0 = z.read_value();
+        assert_eq!(v0.is_some(), true);
+        assert_eq!(v0.unwrap(), 0);
+        assert_eq!(z.read_available(), 1);
+        // slice doesn't change, consecutive is only to the wrap.
+        assert_eq!(z.write_slice_mut().len(), 6);
+    }
 }
