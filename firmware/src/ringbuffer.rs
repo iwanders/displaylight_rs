@@ -1,8 +1,7 @@
 use core::marker::Copy;
 
-pub enum RingBufferState {
-    WriteOverrun,
-}
+pub struct WriteOverrun();
+pub struct ReadOverrun();
 
 /*
     if read_pos == write_pos, no data.
@@ -48,6 +47,52 @@ impl<T: Copy + Default, const N: usize> RingBuffer<T, { N }> {
         self.write_pos
     }
 
+    /// Get the number of entries that are at maximum available for writing.
+    pub fn write_available(&self) -> usize {
+        if self.write_pos < self.read_pos {
+            self.read_pos - self.write_pos - 1
+        } else {
+            (self.write_pos..(if self.read_pos == 0 {N - 1} else {N})).len() + self.read_pos.saturating_sub(1)
+        }
+    }
+
+    /// Get longest available writable slice without destroying data not read yet.
+    pub fn write_slice_mut<'a>(&'a mut self) -> &'a mut [T] {
+        // Easy case;
+        if self.write_pos < self.read_pos {
+            // writeable is between write_pos and read_pos - 1.
+            &mut self.array[self.write_pos..(self.read_pos - 1)]
+        } else {
+            // Else, it is always between current write pos and N - 1, OR N if read_pos is not 0.
+            &mut self.array[self.write_pos..(if self.read_pos == 0 {N - 1} else {N})]
+
+        }
+    }
+
+
+    /// Advance write index by certain value.
+    pub fn write_advance(&mut self, count: usize) -> Result<(), WriteOverrun> {
+        let available = self.write_available();
+        if count > available {
+            return Err(WriteOverrun());
+        }
+        self.write_pos = (self.write_pos + count) % N;
+        Ok(())
+    }
+
+
+    /// Write a value to the ringbuffer, advancing the write position.
+    pub fn write_value(&mut self, value: T) -> Result<(), WriteOverrun> {
+        let available = self.write_available();
+        if available == 0 {
+            return Err(WriteOverrun());
+        }
+        self.array[self.write_pos] = value;
+        self.write_pos = (self.write_pos + 1) % N;
+        Ok(())
+        
+    }
+
     /// Get the number of entries that are at least available for read.
     pub fn read_available(&self) -> usize {
         if self.write_pos < self.read_pos {
@@ -59,40 +104,7 @@ impl<T: Copy + Default, const N: usize> RingBuffer<T, { N }> {
         }
     }
 
-    /// Get the number of entries that are at maximum available for writing.
-    pub fn write_available(&self) -> usize {
-        if self.write_pos < self.read_pos {
-            self.read_pos - self.write_pos - 1
-        } else {
-            // ((N - 1 - self.read_pos) + self.write_pos) % N
-            (self.write_pos..(if self.read_pos == 0 {N - 1} else {N})).len() 
-        }
-    }
-
-    /// Get longest available writable slice without destroying data not read yet.
-    pub fn write_slice_mut<'a>(&'a mut self) -> &'a mut [T] {
-        // Easy case;
-        if self.write_pos < self.read_pos {
-            // writeable is between write_pos and read_pos.
-            &mut self.array[self.write_pos..(self.read_pos - 1)]
-        } else {
-            // Else, it is always between current write pos and N - 1, OR N if read_pos is not 0.
-            &mut self.array[self.write_pos..(if self.read_pos == 0 {N - 1} else {N})]
-
-        }
-    }
-
-    /// Advance write index by certain value.
-    pub fn write_advance(&mut self, count: usize) -> Result<(), RingBufferState> {
-        let available = self.write_available();
-        if count > available {
-            return Err(RingBufferState::WriteOverrun);
-        }
-        self.write_pos = (self.write_pos + count) % N;
-        Ok(())
-    }
-
-    /// Read a value out of the ringbuffer, advancing the read pointer.
+    /// Read a value out of the ringbuffer, advancing the read position.
     pub fn read_value(&mut self) -> Option<T> {
         if self.read_available() != 0 {
             let v = self.array[self.read_pos];
@@ -100,6 +112,25 @@ impl<T: Copy + Default, const N: usize> RingBuffer<T, { N }> {
             return Some(v);
         }
         None
+    }
+    /// Get the longest available read slice.
+    pub fn read_slice_mut<'a>(&'a mut self) -> &'a mut [T] {
+        if self.write_pos < self.read_pos {
+            &mut self.array[self.read_pos..N]
+        } else {
+            // Values between read and write.
+            &mut self.array[self.read_pos..self.write_pos]
+        }
+    }
+
+    /// Advance write index by certain value.
+    pub fn read_advance(&mut self, count: usize) -> Result<(), ReadOverrun> {
+        let available = self.read_available();
+        if count > available {
+            return Err(ReadOverrun());
+        }
+        self.read_pos = (self.read_pos + count) % N;
+        Ok(())
     }
 }
 
@@ -119,6 +150,7 @@ mod tests {
         //R
         // W
         assert_eq!(z.read_available(), 0);
+        assert_eq!(z.read_slice_mut().len(), 0);
         assert_eq!(z.write_available(), 3);
         assert_eq!(z.write_slice_mut().len(), 3);
 
@@ -131,6 +163,7 @@ mod tests {
         z.set_read_pos(0);
         z.set_write_pos(2);
         assert_eq!(z.read_available(), 2);
+        assert_eq!(z.read_slice_mut().len(), 2);
         assert_eq!(z.write_available(), 1);
         assert_eq!(z.write_slice_mut().len(), 1);
 
@@ -143,6 +176,7 @@ mod tests {
         z.set_read_pos(2);
         z.set_write_pos(0);
         assert_eq!(z.read_available(), 2);
+        assert_eq!(z.read_slice_mut().len(), 2);
         assert_eq!(z.write_available(), 1);
         assert_eq!(z.write_slice_mut().len(), 1);
 
@@ -156,7 +190,9 @@ mod tests {
         z.set_read_pos(0);
         z.set_write_pos(3);
         assert_eq!(z.read_available(), 3);
+        assert_eq!(z.read_slice_mut().len(), 3);
         assert_eq!(z.write_available(), 0);
+        assert_eq!(z.write_slice_mut().len(), 0);
 
 
         // Index: 0 1 2 3
@@ -168,7 +204,21 @@ mod tests {
         z.set_read_pos(1);
         z.set_write_pos(3);
         assert_eq!(z.read_available(), 2);
+        assert_eq!(z.read_slice_mut().len(), 2);
         assert_eq!(z.write_available(), 1);
+
+
+        z.set_read_pos(2);
+        z.set_write_pos(2);
+        // Index: 0 1 2 3
+        //           R
+        //            W
+        // All writes populated.
+        // 3, 0, 1 available for writing.
+        assert_eq!(z.read_available(), 0);
+        assert_eq!(z.read_slice_mut().len(), 0);
+        assert_eq!(z.write_available(), 3);
+        assert_eq!(z.write_slice_mut().len(), 2);
     }
 
     #[test]
@@ -196,6 +246,7 @@ mod tests {
         assert_eq!(z.read_available(), 2);
         assert_eq!(z.write_available(), 1);
         assert_eq!(z.array(), &[1, 2, 0, 0]);
+        assert_eq!(z.read_slice_mut(), &[1, 2]);
 
 
         // Write things.
@@ -204,14 +255,58 @@ mod tests {
         v[0] = 3;
         assert_eq!(z.write_advance(2).is_err(), true);
         assert_eq!(z.write_advance(1).is_ok(), true);
+
         // Index: 0 1 2 3
         //       R
         //              W
         // Val:   1 2 3 0
-
         assert_eq!(z.read_available(), 3);
         assert_eq!(z.write_available(), 0);
         assert_eq!(z.array(), &[1, 2, 3, 0]);
+        assert_eq!(z.write_value(10).is_err(), true);
+
+        // Read a value.
+        let r = z.read_value();
+        assert_eq!(r.is_some(), true);
+        assert_eq!(r.unwrap(), 1);
+        // Index: 0 1 2 3
+        //         R
+        //              W
+        // Val:   1 2 3 0
+        assert_eq!(z.read_available(), 2);
+        assert_eq!(z.write_available(), 1);
+        assert_eq!(z.array(), &[1, 2, 3, 0]);
+        assert_eq!(z.read_slice_mut(), &[2, 3]);
+
+        let r = z.read_value();
+        assert_eq!(r.is_some(), true);
+        assert_eq!(r.unwrap(), 2);
+        // Index: 0 1 2 3
+        //           R
+        //              W
+        // Val:   1 2 3 0
+        assert_eq!(z.read_available(), 1);
+        assert_eq!(z.write_available(), 2);
+        assert_eq!(z.array(), &[1, 2, 3, 0]);
+        assert_eq!(z.read_slice_mut(), &[3]);
+
+        // Add a value.
+        let r = z.write_value(4);
+        assert_eq!(r.is_ok(), true);
+        // let v = z.write_slice_mut();
+        // assert_eq!(v.len(), 1);
+        // v[0] = 4;
+        // assert_eq!(z.write_advance(1).is_ok(), true);
+        // Index: 0 1 2 3
+        //           R
+        //        W
+        // Val:   1 2 3 4
+        assert_eq!(z.read_available(), 2);
+        assert_eq!(z.write_available(), 1);
+        assert_eq!(z.array(), &[1, 2, 3, 4]);
+
+        assert_eq!(z.read_slice_mut(), &[3, 4]);
+        assert_eq!(z.read_advance(2).is_ok(), true);
 
     }
 }
