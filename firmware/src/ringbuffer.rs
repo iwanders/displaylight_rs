@@ -64,7 +64,8 @@ impl<T: Copy + Default, const N: usize> RingBuffer<T, { N }> {
         if self.write_pos < self.read_pos {
             self.read_pos - self.write_pos - 1
         } else {
-            ((N - 1 - self.read_pos) + self.write_pos) % N
+            // ((N - 1 - self.read_pos) + self.write_pos) % N
+            (self.write_pos..(if self.read_pos == 0 {N - 1} else {N})).len() 
         }
     }
 
@@ -75,8 +76,8 @@ impl<T: Copy + Default, const N: usize> RingBuffer<T, { N }> {
             // writeable is between write_pos and read_pos.
             &mut self.array[self.write_pos..(self.read_pos - 1)]
         } else {
-            // Else, it is always between current write pos and N - 1.
-            &mut self.array[self.write_pos..(N - 1)]
+            // Else, it is always between current write pos and N - 1, OR N if read_pos is not 0.
+            &mut self.array[self.write_pos..(if self.read_pos == 0 {N - 1} else {N})]
 
         }
     }
@@ -156,9 +157,21 @@ mod tests {
         z.set_write_pos(3);
         assert_eq!(z.read_available(), 3);
         assert_eq!(z.write_available(), 0);
+
+
+        // Index: 0 1 2 3
+        //         R
+        //              W
+        // All writes populated.
+        // 1, 2 for reading
+        // 0 for writing.
+        z.set_read_pos(1);
+        z.set_write_pos(3);
+        assert_eq!(z.read_available(), 2);
+        assert_eq!(z.write_available(), 1);
     }
 
-    // #[test]
+    #[test]
     fn state_checks() {
         // Index: 0 1 2 3
         //       R
