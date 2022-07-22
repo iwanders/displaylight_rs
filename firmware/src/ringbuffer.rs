@@ -36,6 +36,11 @@ impl<T: Copy + Default, const N: usize> RingBuffer<T, { N }> {
         self.write_pos = v;
     }
 
+    #[cfg(test)]
+    pub fn array(&mut self) -> &mut [T]{
+        &mut self.array[..]
+    }
+
     pub fn read_pos(&self) -> usize {
         self.read_pos
     }
@@ -139,5 +144,61 @@ mod tests {
         assert_eq!(z.read_available(), 2);
         assert_eq!(z.write_available(), 1);
         assert_eq!(z.write_slice_mut().len(), 1);
+
+        // Index: 0 1 2 3
+        //       R
+        //              W
+        // All writes populated.
+        // We cannot write 3, because that makes read == write, meaning empty.
+        // 0, 1, 2 ready for reading.
+        // no slots for writing.
+        z.set_read_pos(0);
+        z.set_write_pos(3);
+        assert_eq!(z.read_available(), 3);
+        assert_eq!(z.write_available(), 0);
+    }
+
+    // #[test]
+    fn state_checks() {
+        // Index: 0 1 2 3
+        //       R
+        //        W
+        // Val:   0 0 0 0
+        let mut z = RingBuffer::<u8, 4>::new();
+        assert_eq!(z.read_available(), 0);
+        assert_eq!(z.write_available(), 3);
+        assert_eq!(z.array(), &[0, 0, 0, 0]);
+
+        // Write things.
+        let v = z.write_slice_mut();
+        assert_eq!(v.len(), 3);
+        v[0] = 1;
+        v[1] = 2;
+        assert_eq!(z.write_advance(2).is_ok(), true);
+
+        // Index: 0 1 2 3
+        //       R
+        //            W
+        // Val:   1 2 0 0
+        assert_eq!(z.read_available(), 2);
+        assert_eq!(z.write_available(), 1);
+        assert_eq!(z.array(), &[1, 2, 0, 0]);
+
+
+        // Write things.
+        let v = z.write_slice_mut();
+        assert_eq!(v.len(), 1);
+        v[0] = 3;
+        assert_eq!(z.write_advance(2).is_err(), true);
+        assert_eq!(z.write_advance(1).is_ok(), true);
+        // Index: 0 1 2 3
+        //       R
+        //              W
+        // Val:   1 2 3 0
+
+        assert_eq!(z.read_available(), 3);
+        assert_eq!(z.write_available(), 0);
+        assert_eq!(z.array(), &[1, 2, 3, 0]);
+
     }
 }
