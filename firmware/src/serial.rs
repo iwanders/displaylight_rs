@@ -107,7 +107,7 @@ impl Serial {
     pub fn service(&mut self) {
         usb_interrupt();
         write_from_buffer();
-        read_to_buffer();
+        // read_to_buffer();
         usb_interrupt();
     }
 

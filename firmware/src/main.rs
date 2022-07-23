@@ -125,15 +125,15 @@ fn main() -> ! {
         s.write(d.data());
         s.write(&[73]);
         // delay.delay_ms(1_00_u16);
-        if s.available() {
-            loop {
-                if let Some(v) = s.read() {
-                    s.write(&[v + 20]);
-                }
-                else {
-                    break;
-                }
-            }
-        }
+        // if s.available() {
+            // loop {
+                // if let Some(v) = s.read() {
+                    // s.write(&[v + 20]);
+                // }
+                // else {
+                    // break;
+                // }
+            // }
+        // }
     }
 }
