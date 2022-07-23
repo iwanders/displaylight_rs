@@ -32,6 +32,8 @@ static buffer_tx: Mutex<RefCell<Option<RxBuffer>>> = Mutex::new(RefCell::new(Non
 // PC to microcontroller.
 static buffer_rx: Mutex<RefCell<Option<TxBuffer>>> = Mutex::new(RefCell::new(None));
 
+static mut z : Option<cortex_m::interrupt::CriticalSection> = None;
+
 
 /// Serial object is the main interface to the ringbuffers that are serviced by the ISR.
 pub struct Serial {}
@@ -41,9 +43,10 @@ impl Serial {
         // Unsafe to allow access to static variables
         unsafe {
             {
-                let z = cortex_m::interrupt::CriticalSection::new();
-                buffer_rx.borrow(&z).borrow_mut().replace(RxBuffer::new());
-                buffer_tx.borrow(&z).borrow_mut().replace(TxBuffer::new());
+                // let z = cortex_m::interrupt::CriticalSection::new();
+                z = Some(unsafe {cortex_m::interrupt::CriticalSection::new()});
+                buffer_rx.borrow(&z.as_ref().unwrap()).borrow_mut().replace(RxBuffer::new());
+                buffer_tx.borrow(&z.as_ref().unwrap()).borrow_mut().replace(TxBuffer::new());
             }
 
             let bus = UsbBus::new(usb);
@@ -71,20 +74,24 @@ impl Serial {
     }
 
     pub fn write(&mut self, data: &[u8]) {
-        let z = unsafe {cortex_m::interrupt::CriticalSection::new()};
-
-        let mut buffer =  buffer_tx.borrow(&z).borrow_mut();
-        let write_buffer = (*buffer).as_mut().unwrap().write_slice_mut();
+        // let z = unsafe {cortex_m::interrupt::CriticalSection::new()};
+        let mut data = data;
+        let mut buffer =  buffer_tx.borrow(unsafe{&z.as_ref().unwrap()}).borrow_mut();
         //left.copy_from_slice(subst);
         // write_buffer.copy_from_slice(data);
-        write_buffer[0..data.len()].copy_from_slice(data);
-        (*buffer).as_mut().unwrap().write_advance(data.len());
+        while data.len() != 0 {
+            let write_buffer = (*buffer).as_mut().unwrap().write_slice_mut();
+            let max_len = core::cmp::min(data.len(), write_buffer.len());
+            write_buffer[0..max_len].copy_from_slice(&data[0..max_len]);
+            (*buffer).as_mut().unwrap().write_advance(max_len);
+            data = &data[max_len..];
+        }
     }
 
     pub fn service(&mut self) {
         let serial = unsafe { USB_SERIAL.as_mut().unwrap() };
-        let z = unsafe {cortex_m::interrupt::CriticalSection::new()};
-        write_to_buffer(serial, &z);
+        // let z = unsafe {cortex_m::interrupt::CriticalSection::new()};
+        write_to_buffer(serial);
     }
 }
 
@@ -98,9 +105,9 @@ fn USB_LP_CAN_RX0() {
     usb_interrupt();
 }
 
-fn write_to_buffer(serial: &mut usbd_serial::SerialPort<UsbBusType>, z: &cortex_m::interrupt::CriticalSection)
+fn write_to_buffer(serial: &mut usbd_serial::SerialPort<UsbBusType>)
 {
-    let mut buffer =  buffer_tx.borrow(&z).borrow_mut();
+    let mut buffer =  buffer_tx.borrow(unsafe{&z.as_ref().unwrap()}).borrow_mut();
     let read_buffer = (*buffer).as_mut().unwrap().read_slice_mut();
     let count = read_buffer.len();
     serial.write(&read_buffer).ok();
@@ -115,10 +122,9 @@ fn usb_interrupt() {
         return;
     }
 
-    let z = unsafe {cortex_m::interrupt::CriticalSection::new()};
     // Reading
     {
-        let mut buffer =  buffer_rx.borrow(&z).borrow_mut();
+        let mut buffer =  buffer_rx.borrow(unsafe{&z.as_ref().unwrap()}).borrow_mut();
         let write_buffer = (*buffer).as_mut().unwrap().write_slice_mut();
         // buffer_tx.borrow(&z).borrow_mut().replace(TxBuffer::new());
         // let mut buf = [0u8; 8];
@@ -133,13 +139,5 @@ fn usb_interrupt() {
     }
 
     // Writing
-    {
-        let mut buffer =  buffer_tx.borrow(&z).borrow_mut();
-        let read_buffer = (*buffer).as_mut().unwrap().read_slice_mut();
-        let count = read_buffer.len();
-        serial.write(&read_buffer).ok();
-        (*buffer).as_mut().unwrap().read_advance(count);
-    }
-
-    write_to_buffer(serial, &z);
+    // write_to_buffer(serial);
 }

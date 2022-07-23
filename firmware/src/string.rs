@@ -1,6 +1,6 @@
 
 /// Max length of our stack-string.
-const STACK_STRING_SIZE: usize = 32;
+const STACK_STRING_SIZE: usize = 64;
 
 /// Object to be able to write a string that's stored onto the stack.
 pub struct StackString {
