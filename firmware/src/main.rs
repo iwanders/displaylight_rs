@@ -37,6 +37,9 @@ use stm32f1xx_hal::usb::Peripheral;
 // use cortex_m_rt::entry;
 mod ringbuffer;
 mod serial;
+mod string;
+
+
 
 #[cfg_attr(not(test), entry)]
 fn main() -> ! {
@@ -44,6 +47,7 @@ fn main() -> ! {
     let cp = cortex_m::Peripherals::take().unwrap();
     // Get access to the device specific peripherals from the peripheral access crate
     let dp = pac::Peripherals::take().unwrap();
+
 
     // Take ownership over the raw flash and rcc devices and convert them into the corresponding
     // HAL structs
@@ -70,8 +74,8 @@ fn main() -> ! {
     // in order to configure the port. For pins 0-7, crl should be passed instead.
     let mut led = gpioc.pc13.into_push_pull_output(&mut gpioc.crh);
     // Configure the syst timer to trigger an update every second
-    let mut timer = Timer::syst(cp.SYST, &clocks).counter_hz();
-    timer.start(5.Hz()).unwrap();
+    // let mut timer = Timer::syst(cp.SYST, &clocks).counter_hz();
+    // timer.start(5.Hz()).unwrap();
 
     // Setup usb serial
 
@@ -96,7 +100,21 @@ fn main() -> ! {
 
     let mut s = serial::Serial::new(usb);
 
+    let mut delay = cp.SYST.delay(&clocks);
+    let mut v = 0usize;
     loop {
+        v += 1;
+        s.service();
         // wfi();
+        if (v % 100000 != 0) {
+            continue;
+        }
+        // let z = format!("{}", v);
+        let mut d: string::StackString = Default::default();
+
+        core::fmt::write(&mut d, format_args!("{}\n", v));
+        // v.write_str("\n").unwrap();
+        s.write(d.data());
+        // delay.delay_ms(1_00_u16);
     }
 }
