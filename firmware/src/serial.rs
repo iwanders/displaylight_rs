@@ -1,4 +1,3 @@
- 
 static mut USB_BUS: Option<UsbBusAllocator<UsbBusType>> = None;
 static mut USB_SERIAL: Option<usbd_serial::SerialPort<UsbBusType>> = None;
 static mut USB_DEVICE: Option<UsbDevice<UsbBusType>> = None;
@@ -12,7 +11,6 @@ static mut USB_DEVICE: Option<UsbDevice<UsbBusType>> = None;
 
 // SerialPort implements a stream.
 // CdcAcmClass implements packets...
-
 
 use stm32f1xx_hal::pac::{self, interrupt, Interrupt, NVIC};
 use stm32f1xx_hal::prelude::*;

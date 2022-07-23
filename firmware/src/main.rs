@@ -108,7 +108,7 @@ fn main() -> ! {
     loop {
         v += 1;
         unsafe {
-            g_v =v ;
+            g_v = v;
             core::ptr::read_volatile(&g_v);
         }
         s.service();

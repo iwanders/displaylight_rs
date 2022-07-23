@@ -9,7 +9,6 @@ pub struct WriteOverrun();
     read_pos denotes up to where we have read.
 */
 
-
 use core::cell::UnsafeCell;
 use core::mem::MaybeUninit;
 
@@ -28,18 +27,17 @@ pub struct SpScRingbuffer<T, const N: usize> {
     write_pos: AtomicUsize,
 }
 
-impl<T, const N: usize> SpScRingbuffer<T,  N > {
+impl<T, const N: usize> SpScRingbuffer<T, N> {
     const VAL: UnsafeCell<MaybeUninit<T>> = UnsafeCell::new(MaybeUninit::uninit());
 
     pub fn new() -> Self {
         // Odd workaround for E0277
-        SpScRingbuffer::<T,  N > {
+        SpScRingbuffer::<T, N> {
             array: [Self::VAL; N],
             read_pos: AtomicUsize::new(0),
             write_pos: AtomicUsize::new(0),
         }
     }
-
 
     #[cfg(test)]
     pub fn set_read_pos(&mut self, v: usize) {
@@ -51,12 +49,6 @@ impl<T, const N: usize> SpScRingbuffer<T,  N > {
         self.write_pos = AtomicUsize::new(v);
     }
 
-    // #[cfg(test)]
-    // pub fn array(&mut self) -> &mut [T] {
-        // &mut self.array[..]
-    // }
-
-
     pub fn is_empty(&self) -> bool {
         self.read_pos.load(Ordering::Relaxed) == self.write_pos.load(Ordering::Relaxed)
     }
@@ -67,7 +59,12 @@ impl<T, const N: usize> SpScRingbuffer<T,  N > {
 
     /// Read a value out of the SpScQueue, advancing the read position.
     pub fn read_value(&mut self) -> Option<T> {
+        unsafe { self.read_value_unsafe() }
+    }
 
+    // Private worker functiont that can use interior mutability to allow reading values on a const
+    // version of self without having to do const casts.
+    unsafe fn read_value_unsafe(&self) -> Option<T> {
         // check if there's something to return
         if self.is_empty() {
             return None;
@@ -83,8 +80,14 @@ impl<T, const N: usize> SpScRingbuffer<T,  N > {
         Some(v)
     }
 
-    pub fn write_value(&mut self, value: T) -> Result<(), WriteOverrun>
-    {
+    /// Write a value to the SpScQueue, advancing the write position. Returns an error if the
+    /// buffer is full.
+    pub fn write_value(&mut self, value: T) -> Result<(), WriteOverrun> {
+        unsafe { self.write_value_unsafe(value) }
+    }
+
+    // Write worker function that uses interior mutability.
+    unsafe fn write_value_unsafe(&self, value: T) -> Result<(), WriteOverrun> {
         // Check if we can write
         if self.is_full() {
             return Err(WriteOverrun());
@@ -94,54 +97,48 @@ impl<T, const N: usize> SpScRingbuffer<T,  N > {
         let w_pos = self.write_pos.load(Ordering::Relaxed);
 
         // Insert the value into the array.
-        (self.array[w_pos].get_mut()).write(value);
+        let location = self.array[w_pos].get();
+
+        // The following is safe, because r_pos can never be w_pos.
+        unsafe { location.write(MaybeUninit::new(value)) };
 
         // Advance the write pointer.
         self.write_pos.store((w_pos + 1) % N, Ordering::Release);
         Ok(())
     }
 
-
-    /*
     pub fn split<'a>(&'a mut self) -> (Reader<'a, T, N>, Writer<'a, T, N>) {
         (Reader::new(self), Writer::new(self))
     }
-    */
 }
 
-/*
-pub struct Writer<'a, T: Copy + Default, const N: usize> {
-    buffer: &'a SpScQueue<T, { N }>,
+pub struct Writer<'a, T, const N: usize> {
+    buffer: &'a SpScRingbuffer<T, { N }>,
 }
 
-impl<'a, T: Copy + Default, const N: usize> Writer<'a, T, { N }> {
-    fn new(buffer: &'a SpScQueue<T, { N }>) -> Self {
-        Self{buffer}
+impl<'a, T, const N: usize> Writer<'a, T, { N }> {
+    fn new(buffer: &'a SpScRingbuffer<T, { N }>) -> Self {
+        Self { buffer }
     }
 
     pub fn write_value(&mut self, value: T) -> Result<(), WriteOverrun> {
-        unsafe {
-            self.buffer.write_value_unsafe(value)
-        }
+        unsafe { self.buffer.write_value_unsafe(value) }
     }
 }
 
-pub struct Reader<'a, T: Copy + Default, const N: usize> {
-    buffer: &'a SpScQueue<T, { N }>,
+pub struct Reader<'a, T, const N: usize> {
+    buffer: &'a SpScRingbuffer<T, { N }>,
 }
 
-impl<'a, T: Copy + Default, const N: usize> Reader<'a, T, { N }> {
-    fn new(buffer: &'a SpScQueue<T, { N }>) -> Self {
-        Self{buffer}
+impl<'a, T, const N: usize> Reader<'a, T, { N }> {
+    fn new(buffer: &'a SpScRingbuffer<T, { N }>) -> Self {
+        Self { buffer }
     }
 
     pub fn read_value(&mut self) -> Option<T> {
-        unsafe {
-            self.buffer.read_value_unsafe()
-        }
+        unsafe { self.buffer.read_value_unsafe() }
     }
 }
-*/
 
 #[cfg(test)]
 mod tests {
@@ -157,14 +154,13 @@ mod tests {
         // One value in there now.
         assert_eq!(z.is_empty(), false);
         assert_eq!(z.is_full(), false);
-    
+
         // read the one value
         let v = z.read_value();
         assert_eq!(v.is_some(), true);
         assert_eq!(v.unwrap(), 1);
         assert_eq!(z.is_empty(), true);
         assert_eq!(z.is_full(), false);
-
 
         assert_eq!(z.write_value(2).is_ok(), true);
         assert_eq!(z.write_value(3).is_ok(), true);
@@ -178,8 +174,19 @@ mod tests {
 
         assert_eq!(z.is_empty(), true);
         assert_eq!(z.is_full(), false);
+
+        let (mut reader, mut writer) = z.split();
+        assert_eq!(reader.read_value().is_none(), true);
+        assert_eq!(writer.write_value(1).is_ok(), true);
+        assert_eq!(reader.read_value().expect("1"), 1);
+
+        assert_eq!(writer.write_value(1).is_ok(), true);
+        assert_eq!(writer.write_value(2).is_ok(), true);
+        assert_eq!(writer.write_value(3).is_ok(), true);
+        assert_eq!(writer.write_value(4).is_err(), true);
+        assert_eq!(reader.read_value().expect("1"), 1);
+        assert_eq!(reader.read_value().expect("2"), 2);
+        assert_eq!(reader.read_value().expect("3"), 3);
+        assert_eq!(reader.read_value().is_none(), true);
     }
 }
-
-
-

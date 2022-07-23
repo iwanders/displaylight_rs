@@ -9,7 +9,6 @@ pub struct ReadOverrun();
     read_pos denotes up to where we have read.
 */
 
-
 use core::cell::UnsafeCell;
 use core::mem::MaybeUninit;
 
@@ -136,7 +135,6 @@ impl<T: Copy + Default, const N: usize> RingBuffer<T, { N }> {
         self.read_pos = (self.read_pos + count) % N;
         Ok(())
     }
-
 
     /*
     pub fn split<'a>(&'a mut self) -> (Reader<'a, T, N>, Writer<'a, T, N>) {
