@@ -89,6 +89,11 @@ impl<T: Copy + Default, const N: usize> RingBuffer<T, { N }> {
         self.write_pos = (self.write_pos + 1) % N;
         Ok(())
     }
+    pub unsafe fn write_value_unsafe(&self, value: T) -> Result<(), WriteOverrun> {
+        let self_mut = core::mem::transmute::<_, &mut Self>(self);
+        self_mut.write_value(value)
+    }
+
 
     /// Get the number of entries that are at least available for read.
     pub fn read_available(&self) -> usize {
@@ -110,6 +115,11 @@ impl<T: Copy + Default, const N: usize> RingBuffer<T, { N }> {
         }
         None
     }
+    pub unsafe fn read_value_unsafe(&self) -> Option<T>  {
+        let self_mut = core::mem::transmute::<_, &mut Self>(self);
+        self_mut.read_value()
+    }
+
     /// Get the longest available read slice.
     pub fn read_slice_mut<'a>(&'a mut self) -> &'a mut [T] {
         if self.write_pos < self.read_pos {
@@ -129,7 +139,45 @@ impl<T: Copy + Default, const N: usize> RingBuffer<T, { N }> {
         self.read_pos = (self.read_pos + count) % N;
         Ok(())
     }
+
+
+    pub fn split<'a>(&'a mut self) -> (Reader<'a, T, N>, Writer<'a, T, N>) {
+        (Reader::new(self), Writer::new(self))
+    }
 }
+
+pub struct Writer<'a, T: Copy + Default, const N: usize> {
+    buffer: &'a RingBuffer<T, { N }>,
+}
+
+impl<'a, T: Copy + Default, const N: usize> Writer<'a, T, { N }> {
+    fn new(buffer: &'a RingBuffer<T, { N }>) -> Self {
+        Self{buffer}
+    }
+
+    pub fn write_value(&mut self, value: T) -> Result<(), WriteOverrun> {
+        unsafe {
+            self.buffer.write_value_unsafe(value)
+        }
+    }
+}
+
+pub struct Reader<'a, T: Copy + Default, const N: usize> {
+    buffer: &'a RingBuffer<T, { N }>,
+}
+
+impl<'a, T: Copy + Default, const N: usize> Reader<'a, T, { N }> {
+    fn new(buffer: &'a RingBuffer<T, { N }>) -> Self {
+        Self{buffer}
+    }
+
+    pub fn read_value(&mut self) -> Option<T> {
+        unsafe {
+            self.buffer.read_value_unsafe()
+        }
+    }
+}
+
 
 #[cfg(test)]
 mod tests {
