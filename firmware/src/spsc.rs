@@ -29,8 +29,9 @@ pub struct SpScRingbuffer<T, const N: usize> {
 
 impl<T, const N: usize> SpScRingbuffer<T, N> {
     const VAL: UnsafeCell<MaybeUninit<T>> = UnsafeCell::new(MaybeUninit::uninit());
+    // type Writer = Writer<'a, T, N>; // nope; https://github.com/rust-lang/rust/issues/8995
 
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         // Odd workaround for E0277
         SpScRingbuffer::<T, N> {
             array: [Self::VAL; N],

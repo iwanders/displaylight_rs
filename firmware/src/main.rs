@@ -40,6 +40,7 @@ use stm32f1xx_hal::usb::Peripheral;
 
 // use cortex_m_rt::entry;
 mod ringbuffer;
+mod spsc;
 mod serial;
 mod string;
 
