@@ -9,6 +9,20 @@
 // SerialPort implements a stream.
 // CdcAcmClass implements packets...
 
+use core::sync::atomic::{compiler_fence, Ordering};
+use core::arch::asm;
+
+#[inline]
+pub unsafe fn enable() {
+    compiler_fence(Ordering::SeqCst);
+    asm!("cpsie i", options(nomem, nostack));//, preserves_flags
+}
+#[inline]
+pub unsafe fn disable() {
+    asm!("cpsid i", options(nomem, nostack));//, preserves_flags
+    compiler_fence(Ordering::SeqCst);
+}
+
 use stm32f1xx_hal::pac::{self, interrupt, Interrupt, NVIC};
 use stm32f1xx_hal::prelude::*;
 use stm32f1xx_hal::usb::{Peripheral, UsbBus, UsbBusType};
@@ -53,12 +67,12 @@ static mut USB_DEVICE: Option<UsbDevice<UsbBusType>> = None;
 /// Serial object is the main interface to the ringbuffers that are serviced by the ISR.
 pub struct Serial {}
 
+ 
 impl Serial {
     pub fn new(usb: Peripheral) -> Self {
         // Unsafe to allow access to static variables
         unsafe {
             let bus = UsbBus::new(usb);
-
             USB_BUS = Some(bus);
 
             USB_SERIAL = Mutex::new(RefCell::new(Some(SerialPort::new(
@@ -106,9 +120,9 @@ impl Serial {
 
     pub fn service(&mut self) {
         usb_interrupt();
-        // write_from_buffer();
-        // read_to_buffer();
-        // usb_interrupt();
+        write_from_buffer();
+        read_to_buffer();
+        usb_interrupt();
     }
 
     pub fn available(&self) -> bool {
@@ -146,8 +160,10 @@ fn USB_LP_CAN_RX0() {
 }
 
 fn write_from_buffer() {
-    cortex_m::interrupt::disable();
+    // cortex_m::interrupt::disable();
+    unsafe {disable();}
     // cortex_m::interrupt::free(|cs| {
+    {
         let cs = unsafe{&cortex_m::interrupt::CriticalSection::new()};
         let mut serial_borrow = unsafe { USB_SERIAL.borrow(cs).borrow_mut() };
         let serial = serial_borrow.as_mut().unwrap();
@@ -157,12 +173,15 @@ fn write_from_buffer() {
             serial.write(&[z.read_value().unwrap()]).ok();
             usb_dev.poll(&mut [serial]);
         }
+    }
     // });
-    unsafe{cortex_m::interrupt::enable();}
+    // unsafe{cortex_m::interrupt::enable();}
+    unsafe {enable();}
 }
 
 fn read_to_buffer() {
-    cortex_m::interrupt::disable();
+    unsafe {disable();}
+    {
     // cortex_m::interrupt::free(|cs| {
         let cs = unsafe{&cortex_m::interrupt::CriticalSection::new()};
         let mut serial_borrow = unsafe { USB_SERIAL.borrow(cs).borrow_mut() };
@@ -184,12 +203,14 @@ fn read_to_buffer() {
             }
             _ => {}
         }
+    }
     // });
-    unsafe{cortex_m::interrupt::enable();}
+    unsafe {enable();}
 }
 
 fn usb_interrupt() {
-    cortex_m::interrupt::disable();
+    unsafe {disable();}
+    {
     // cortex_m::interrupt::free(|cs| {
         let cs = unsafe{&cortex_m::interrupt::CriticalSection::new()};
         let mut serial_borrow = unsafe { USB_SERIAL.borrow(&cs).borrow_mut() };
@@ -199,6 +220,7 @@ fn usb_interrupt() {
         if !usb_dev.poll(&mut [serial]) {
             return;
         }
+    }
     // });
-    unsafe{cortex_m::interrupt::enable();}
+    unsafe {enable();}
 }

@@ -104,7 +104,6 @@ fn main() -> ! {
 
     let mut s = serial::Serial::new(usb);
 
-    let mut delay = cp.SYST.delay(&clocks);
     let mut v = 0usize;
     loop {
         v += 1;
