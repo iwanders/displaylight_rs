@@ -136,6 +136,10 @@ impl<'a, T, const N: usize> Reader<'a, T, { N }> {
         Self { buffer }
     }
 
+    pub fn is_empty(&self) -> bool {
+        unsafe { self.buffer.is_empty() }
+    }
+
     pub fn read_value(&mut self) -> Option<T> {
         unsafe { self.buffer.read_value_unsafe() }
     }

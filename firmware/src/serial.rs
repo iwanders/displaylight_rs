@@ -29,15 +29,15 @@ use core::ops::DerefMut;
 // use crate::ringbuffer;
 use crate::spsc;
 
-const RxBufferSize : usize = 64;
-type RxBuffer = spsc::SpScRingbuffer<u8, { RxBufferSize }>;
-type RxWriter<'a> = spsc::Writer<'a, u8, RxBufferSize>;
-type RxReader<'a> = spsc::Reader<'a, u8, RxBufferSize>;
+const RX_BUFFER_SIZE : usize = 64;
+type RxBuffer = spsc::SpScRingbuffer<u8, { RX_BUFFER_SIZE }>;
+type RxWriter<'a> = spsc::Writer<'a, u8, RX_BUFFER_SIZE>;
+type RxReader<'a> = spsc::Reader<'a, u8, RX_BUFFER_SIZE>;
 
-const TxBufferSize : usize = 64;
-type TxBuffer = spsc::SpScRingbuffer<u8, { TxBufferSize }>;
-type TxWriter<'a> = spsc::Writer<'a, u8, TxBufferSize>;
-type TxReader<'a> = spsc::Reader<'a, u8, TxBufferSize>;
+const TX_BUFFER_SIZE : usize = 64;
+type TxBuffer = spsc::SpScRingbuffer<u8, { TX_BUFFER_SIZE }>;
+type TxWriter<'a> = spsc::Writer<'a, u8, TX_BUFFER_SIZE>;
+type TxReader<'a> = spsc::Reader<'a, u8, TX_BUFFER_SIZE>;
 
 
 // Microcontroller to PC
@@ -95,23 +95,13 @@ impl Serial {
 
 
     pub fn write(&mut self, data: &[u8]) {
-        // let z = unsafe {cortex_m::interrupt::CriticalSection::new()};
-        let mut data = data;
-
-        // let mut buffer = unsafe { BUFFER_TX.as_mut().unwrap() };
-
-        /*
-        cortex_m::interrupt::free(|cs| {
-            if let Some(ref mut buffer) = BUFFER_TX.borrow(cs).borrow_mut().deref_mut() {
-                while !data.is_empty() {
-                    let write_buffer = buffer.write_slice_mut();
-                    let max_len = core::cmp::min(data.len(), write_buffer.len());
-                    write_buffer[0..max_len].copy_from_slice(&data[0..max_len]);
-                    buffer.write_advance(max_len);
-                    data = &data[max_len..];
-                }
+        let writer = unsafe{ BUFFER_TO_HOST_WRITER.as_mut().unwrap() };
+        for v in data {
+            let r = writer.write_value(*v);
+            if r.is_err() {
+                break;
             }
-        });*/
+        }
     }
 
     pub fn service(&mut self) {
@@ -121,8 +111,27 @@ impl Serial {
         usb_interrupt();
     }
 
-    pub fn available(&self) -> usize {
-        0
+    pub fn available(&self) -> bool {
+        let reader = unsafe{ BUFFER_FROM_HOST_READER.as_mut().unwrap() };
+        reader.is_empty()
+    }
+
+    pub fn read(&self) -> Option<u8> {
+        let reader = unsafe{ BUFFER_FROM_HOST_READER.as_mut().unwrap() };
+        reader.read_value()
+    }
+
+    pub fn read_into(&self, buffer: &mut [u8]) -> usize {
+        let mut i = 0usize;
+        while self.available() && i < buffer.len() {
+            if let Some(v) = self.read() {
+                buffer[i] = v;
+                i += 1;
+            } else {
+                break;
+            }
+        }
+        i
     }
 }
 
@@ -138,35 +147,35 @@ fn USB_LP_CAN_RX0() {
 
 fn write_from_buffer() {
     cortex_m::interrupt::free(|cs| {
-        // let serial = unsafe { USB_SERIAL.as_mut().unwrap() };
-        // let z = BUFFER_TO_HOST_READER.as_ref().unwrap();
-        // while !z.is_empty() {
-            // serial.write(&[z.read_value().unwrap()]).ok();
-        // }
-    
+        let serial = unsafe { USB_SERIAL.as_mut().unwrap() };
+        let z = unsafe{ BUFFER_TO_HOST_READER.as_mut().unwrap() };
+        while !z.is_empty() {
+            serial.write(&[z.read_value().unwrap()]).ok();
+        }
     });
 }
 
 fn read_to_buffer() {
-    /*
     cortex_m::interrupt::free(|cs| {
         let serial = unsafe { USB_SERIAL.as_mut().unwrap() };
-        if let Some(ref mut buffer) = BUFFER_RX.borrow(cs).borrow_mut().deref_mut() {
-            // let mut buffer = unsafe { BUFFER_RX.as_mut().unwrap() };
-            let write_buffer = buffer.write_slice_mut();
-            // BUFFER_TX.borrow(&z).borrow_mut().replace(TxBuffer::new());
-            // let mut buf = [0u8; 8];
+        let writer = unsafe{ BUFFER_FROM_HOST_WRITER.as_mut().unwrap() };
 
-            match serial.read(write_buffer) {
-                Ok(count) if count > 0 => {
-                    let adv = buffer.write_advance(count);
+        let mut buf = [0u8; 64];
+
+        match serial.read(&mut buf) {
+            Ok(count) if count > 0 => {
+                // let adv = buffer.write_advance(count);
+                for i in 0..count {
+                    let res = writer.write_value(buf[i]);
+                    if res.is_err() {
+                        break;
+                    }
                 }
-                _ => {}
             }
+            _ => {}
         }
     });
-    */
-} /**/
+}
 
 fn usb_interrupt() {
     cortex_m::interrupt::free(|v| {
