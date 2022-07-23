@@ -22,13 +22,15 @@ usbd-serial = "0.1.1"
 
 
 [dependencies.cortex-m]
-version = "0.7.4"
+version = "0.7.5"
 features = ["cm7"]
-
+#git = "https://github.com/rust-embedded/cortex-m"
+#rev = "4e908625204a1e95dd3fd5bdcd8d66d6bc11c3bc" 
 
 [dependencies.stm32f1xx-hal]
 version = "0.9.0"
 features = ["rt", "stm32f103", "medium"]
+
 
 
 [profile.dev]
@@ -39,3 +41,6 @@ codegen-units = 1
 codegen-units = 1
 debug = true
 lto = true
+
+#[replace]
+#"cortex-m:0.7.5" = { git = 'https://github.com/rust-embedded/cortex-m', rev = "4e908625204a1e95dd3fd5bdcd8d66d6bc11c3bc"  }

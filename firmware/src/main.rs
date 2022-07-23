@@ -104,6 +104,8 @@ fn main() -> ! {
 
     let mut s = serial::Serial::new(usb);
 
+
+
     let mut v = 0usize;
     loop {
         v += 1;
@@ -114,7 +116,7 @@ fn main() -> ! {
         s.service();
         // wfi();
         if (v % 100000 != 0) {
-        continue;
+            continue;
         }
         // let z = format!("{}", v);
         let mut d: string::StackString = Default::default();
@@ -127,7 +129,7 @@ fn main() -> ! {
 
         while s.available() {
             if let Some(v) = s.read() {
-                s.write(&[v + 20]);
+                s.write(&[v - 0x20]);
             } else {
                 break;
             }

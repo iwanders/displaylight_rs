@@ -9,18 +9,20 @@
 // SerialPort implements a stream.
 // CdcAcmClass implements packets...
 
-use core::sync::atomic::{compiler_fence, Ordering};
-use core::arch::asm;
+mod own_interrupt {
+    use core::arch::asm;
+    use core::sync::atomic::{compiler_fence, Ordering};
 
-#[inline]
-pub unsafe fn enable() {
-    compiler_fence(Ordering::SeqCst);
-    asm!("cpsie i", options(nomem, nostack));//, preserves_flags
-}
-#[inline]
-pub unsafe fn disable() {
-    asm!("cpsid i", options(nomem, nostack));//, preserves_flags
-    compiler_fence(Ordering::SeqCst);
+    #[inline]
+    pub unsafe fn enable() {
+        compiler_fence(Ordering::SeqCst);
+        asm!("cpsie i", options(nomem, nostack)); //, preserves_flags
+    }
+    #[inline]
+    pub unsafe fn disable() {
+        asm!("cpsid i", options(nomem, nostack)); //, preserves_flags
+        compiler_fence(Ordering::SeqCst);
+    }
 }
 
 use stm32f1xx_hal::pac::{self, interrupt, Interrupt, NVIC};
@@ -67,7 +69,6 @@ static mut USB_DEVICE: Option<UsbDevice<UsbBusType>> = None;
 /// Serial object is the main interface to the ringbuffers that are serviced by the ISR.
 pub struct Serial {}
 
- 
 impl Serial {
     pub fn new(usb: Peripheral) -> Self {
         // Unsafe to allow access to static variables
@@ -102,8 +103,8 @@ impl Serial {
         }
 
         unsafe {
-            NVIC::unmask(Interrupt::USB_HP_CAN_TX);
-            NVIC::unmask(Interrupt::USB_LP_CAN_RX0);
+            // NVIC::unmask(Interrupt::USB_HP_CAN_TX);
+            // NVIC::unmask(Interrupt::USB_LP_CAN_RX0);
         }
         Serial {}
     }
@@ -119,7 +120,7 @@ impl Serial {
     }
 
     pub fn service(&mut self) {
-        usb_interrupt();
+        // usb_interrupt();
         write_from_buffer();
         read_to_buffer();
         usb_interrupt();
@@ -127,7 +128,7 @@ impl Serial {
 
     pub fn available(&self) -> bool {
         let reader = unsafe { BUFFER_FROM_HOST_READER.as_mut().unwrap() };
-        reader.is_empty()
+        !reader.is_empty()
     }
 
     pub fn read(&self) -> Option<u8> {
@@ -159,31 +160,38 @@ fn USB_LP_CAN_RX0() {
     usb_interrupt();
 }
 
+fn go_to_overflow() -> !{
+    loop{}
+}
+
 fn write_from_buffer() {
     // cortex_m::interrupt::disable();
-    unsafe {disable();}
-    // cortex_m::interrupt::free(|cs| {
-    {
-        let cs = unsafe{&cortex_m::interrupt::CriticalSection::new()};
+    // unsafe {disable();}
+    cortex_m::interrupt::free(|cs| {
+        // {
+        let cs = unsafe { &cortex_m::interrupt::CriticalSection::new() };
         let mut serial_borrow = unsafe { USB_SERIAL.borrow(cs).borrow_mut() };
         let serial = serial_borrow.as_mut().unwrap();
         let usb_dev = unsafe { USB_DEVICE.as_mut().unwrap() };
         let z = unsafe { BUFFER_TO_HOST_READER.as_mut().unwrap() };
         while !z.is_empty() {
-            serial.write(&[z.read_value().unwrap()]).ok();
-            usb_dev.poll(&mut [serial]);
+            if let Ok(v) = serial.write(&[z.read_value().unwrap()]) {
+            } else {
+                go_to_overflow();
+            }
+            // usb_dev.poll(&mut [serial]);
         }
-    }
-    // });
+        // }
+    });
     // unsafe{cortex_m::interrupt::enable();}
-    unsafe {enable();}
+    // unsafe {enable();}
 }
 
 fn read_to_buffer() {
-    unsafe {disable();}
-    {
-    // cortex_m::interrupt::free(|cs| {
-        let cs = unsafe{&cortex_m::interrupt::CriticalSection::new()};
+    // unsafe {disable();}
+    // {
+    cortex_m::interrupt::free(|cs| {
+        let cs = unsafe { &cortex_m::interrupt::CriticalSection::new() };
         let mut serial_borrow = unsafe { USB_SERIAL.borrow(cs).borrow_mut() };
         let serial = serial_borrow.as_mut().unwrap();
         let usb_dev = unsafe { USB_DEVICE.as_mut().unwrap() };
@@ -203,16 +211,16 @@ fn read_to_buffer() {
             }
             _ => {}
         }
-    }
-    // });
-    unsafe {enable();}
+        // }
+    });
+    // unsafe {enable();}
 }
 
 fn usb_interrupt() {
-    unsafe {disable();}
-    {
-    // cortex_m::interrupt::free(|cs| {
-        let cs = unsafe{&cortex_m::interrupt::CriticalSection::new()};
+    // unsafe {disable();}
+    // {
+    cortex_m::interrupt::free(|cs| {
+        let cs = unsafe { &cortex_m::interrupt::CriticalSection::new() };
         let mut serial_borrow = unsafe { USB_SERIAL.borrow(&cs).borrow_mut() };
         let serial = serial_borrow.as_mut().unwrap();
         let usb_dev = unsafe { USB_DEVICE.as_mut().unwrap() };
@@ -220,7 +228,7 @@ fn usb_interrupt() {
         if !usb_dev.poll(&mut [serial]) {
             return;
         }
-    }
-    // });
-    unsafe {enable();}
+        // }
+    });
+    // unsafe {enable();}
 }
