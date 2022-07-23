@@ -1,4 +1,3 @@
-
 /// Max length of our stack-string.
 const STACK_STRING_SIZE: usize = 64;
 
@@ -47,7 +46,6 @@ impl core::fmt::Write for StackString {
     // fn write_char(&mut self, c: char) -> Result { ... }
     // fn write_fmt(&mut self, args: Arguments<'_>) -> Result { ... }
 }
-
 
 pub use core::fmt;
 /// Provide a println! macro similar to Rust does.

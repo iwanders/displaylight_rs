@@ -1,3 +1,4 @@
+ 
 static mut USB_BUS: Option<UsbBusAllocator<UsbBusType>> = None;
 static mut USB_SERIAL: Option<usbd_serial::SerialPort<UsbBusType>> = None;
 static mut USB_DEVICE: Option<UsbDevice<UsbBusType>> = None;
@@ -7,6 +8,7 @@ static mut USB_DEVICE: Option<UsbDevice<UsbBusType>> = None;
 // https://github.com/rust-embedded/wg/issues/294#issuecomment-456416517
 // https://github.com/rust-embedded/wg/issues/294#issuecomment-456742114
 // https://docs.rs/cortex-m/latest/cortex_m/interrupt/fn.free.html
+//https://github.com/geomatsi/rust-blue-pill-tests/blob/master/src/bin/blink-timer-irq-safe.rs
 
 // SerialPort implements a stream.
 // CdcAcmClass implements packets...
@@ -17,23 +19,22 @@ use stm32f1xx_hal::usb::{Peripheral, UsbBus, UsbBusType};
 use usb_device::{bus::UsbBusAllocator, prelude::*};
 use usbd_serial::{SerialPort, USB_CLASS_CDC};
 
-use core::cell::RefCell;
+// use core::cell::RefCell;
 use cortex_m::interrupt::Mutex;
 
+use core::cell::RefCell;
+use core::ops::DerefMut;
 
 use crate::ringbuffer;
 
-type RxBuffer = ringbuffer::RingBuffer::<u8, {64 + 1 } >;
-type TxBuffer = ringbuffer::RingBuffer::<u8, {64 + 1 } >;
+type RxBuffer = ringbuffer::RingBuffer<u8, { 64 + 1 }>;
+type TxBuffer = ringbuffer::RingBuffer<u8, { 64 + 1 }>;
 
 // Microcontroller to PC
 static buffer_tx: Mutex<RefCell<Option<RxBuffer>>> = Mutex::new(RefCell::new(None));
 
 // PC to microcontroller.
 static buffer_rx: Mutex<RefCell<Option<TxBuffer>>> = Mutex::new(RefCell::new(None));
-
-static mut z : Option<cortex_m::interrupt::CriticalSection> = None;
-
 
 /// Serial object is the main interface to the ringbuffers that are serviced by the ISR.
 pub struct Serial {}
@@ -42,12 +43,12 @@ impl Serial {
     pub fn new(usb: Peripheral) -> Self {
         // Unsafe to allow access to static variables
         unsafe {
-            {
-                // let z = cortex_m::interrupt::CriticalSection::new();
-                z = Some(unsafe {cortex_m::interrupt::CriticalSection::new()});
-                buffer_rx.borrow(&z.as_ref().unwrap()).borrow_mut().replace(RxBuffer::new());
-                buffer_tx.borrow(&z.as_ref().unwrap()).borrow_mut().replace(TxBuffer::new());
-            }
+            // buffer_rx = Some();
+            // buffer_tx = Some();
+            cortex_m::interrupt::free(|cs| {
+                buffer_tx.borrow(cs).replace(Some(TxBuffer::new()));
+                buffer_rx.borrow(cs).replace(Some(RxBuffer::new()));
+            });
 
             let bus = UsbBus::new(usb);
 
@@ -76,22 +77,31 @@ impl Serial {
     pub fn write(&mut self, data: &[u8]) {
         // let z = unsafe {cortex_m::interrupt::CriticalSection::new()};
         let mut data = data;
-        let mut buffer =  buffer_tx.borrow(unsafe{&z.as_ref().unwrap()}).borrow_mut();
-        //left.copy_from_slice(subst);
-        // write_buffer.copy_from_slice(data);
-        while data.len() != 0 {
-            let write_buffer = (*buffer).as_mut().unwrap().write_slice_mut();
-            let max_len = core::cmp::min(data.len(), write_buffer.len());
-            write_buffer[0..max_len].copy_from_slice(&data[0..max_len]);
-            (*buffer).as_mut().unwrap().write_advance(max_len);
-            data = &data[max_len..];
-        }
+
+        // let mut buffer = unsafe { buffer_tx.as_mut().unwrap() };
+
+        cortex_m::interrupt::free(|cs| {
+            if let Some(ref mut buffer) = buffer_tx.borrow(cs).borrow_mut().deref_mut() {
+                while !data.is_empty() {
+                    let write_buffer = buffer.write_slice_mut();
+                    let max_len = core::cmp::min(data.len(), write_buffer.len());
+                    write_buffer[0..max_len].copy_from_slice(&data[0..max_len]);
+                    buffer.write_advance(max_len);
+                    data = &data[max_len..];
+                }
+            }
+        });
     }
 
     pub fn service(&mut self) {
-        let serial = unsafe { USB_SERIAL.as_mut().unwrap() };
+        // cortex_m::interrupt::free(|v| {
+        // cortex_m::interrupt::disable();
         // let z = unsafe {cortex_m::interrupt::CriticalSection::new()};
-        write_to_buffer(serial);
+        write_from_buffer();
+        read_to_buffer();
+        usb_interrupt();
+        // });
+        // unsafe {cortex_m::interrupt::enable()};
     }
 }
 
@@ -105,39 +115,54 @@ fn USB_LP_CAN_RX0() {
     usb_interrupt();
 }
 
-fn write_to_buffer(serial: &mut usbd_serial::SerialPort<UsbBusType>)
-{
-    let mut buffer =  buffer_tx.borrow(unsafe{&z.as_ref().unwrap()}).borrow_mut();
-    let read_buffer = (*buffer).as_mut().unwrap().read_slice_mut();
-    let count = read_buffer.len();
-    serial.write(&read_buffer).ok();
-    (*buffer).as_mut().unwrap().read_advance(count);
+fn write_from_buffer() {
+    cortex_m::interrupt::free(|cs| {
+        let serial = unsafe { USB_SERIAL.as_mut().unwrap() };
+        if let Some(ref mut buffer) = buffer_tx.borrow(cs).borrow_mut().deref_mut() {
+            // let mut buffer = unsafe { buffer_tx.as_mut().unwrap() };
+            let mut read_buffer = buffer.read_slice_mut();
+            while !read_buffer.is_empty() {
+                let count = read_buffer.len();
+                serial.write(&read_buffer).ok();
+                buffer.read_advance(count);
+                read_buffer = buffer.read_slice_mut();
+            }
+        }
+    });
+    // cm::interrupt::free(|cs| {
+    // buffer_tx.borrow(cs).replace(TxBuffer::new());
+    // buffer_rx.borrow(cs).replace(RxBuffer::new());
+    // });
+
+    // serial.write(&[76]).ok();
 }
 
-fn usb_interrupt() {
-    let usb_dev = unsafe { USB_DEVICE.as_mut().unwrap() };
-    let serial = unsafe { USB_SERIAL.as_mut().unwrap() };
+fn read_to_buffer() {
+    cortex_m::interrupt::free(|cs| {
+        let serial = unsafe { USB_SERIAL.as_mut().unwrap() };
+        if let Some(ref mut buffer) = buffer_rx.borrow(cs).borrow_mut().deref_mut() {
+            // let mut buffer = unsafe { buffer_rx.as_mut().unwrap() };
+            let write_buffer = buffer.write_slice_mut();
+            // buffer_tx.borrow(&z).borrow_mut().replace(TxBuffer::new());
+            // let mut buf = [0u8; 8];
 
-    if !usb_dev.poll(&mut [serial]) {
-        return;
-    }
-
-    // Reading
-    {
-        let mut buffer =  buffer_rx.borrow(unsafe{&z.as_ref().unwrap()}).borrow_mut();
-        let write_buffer = (*buffer).as_mut().unwrap().write_slice_mut();
-        // buffer_tx.borrow(&z).borrow_mut().replace(TxBuffer::new());
-        // let mut buf = [0u8; 8];
-
-        match serial.read(write_buffer) {
-            Ok(count) if count > 0 => {
-                let adv = (*buffer).as_mut().unwrap().write_advance(count);
-                // serial.write(&buf[0..count]).ok();
+            match serial.read(write_buffer) {
+                Ok(count) if count > 0 => {
+                    let adv = buffer.write_advance(count);
+                }
+                _ => {}
             }
-            _ => {}
         }
-    }
+    });
+} /**/
 
-    // Writing
-    // write_to_buffer(serial);
+fn usb_interrupt() {
+    cortex_m::interrupt::free(|v| {
+        let usb_dev = unsafe { USB_DEVICE.as_mut().unwrap() };
+        let serial = unsafe { USB_SERIAL.as_mut().unwrap() };
+
+        if !usb_dev.poll(&mut [serial]) {
+            return;
+        }
+    });
 }

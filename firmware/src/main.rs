@@ -8,6 +8,10 @@
 //! Note: Without additional hardware, PC13 should not be used to drive an LED, see page 5.1.2 of
 //! the reference manual for an explanation. This is not an issue on the blue pill.
 
+// https://github.com/adamgreig/ledeaf/blob/fbfed437c77f9bc4d83ea9fae4cee4e107af2e15/firmware/src/main.rs
+// https://github.com/thalesfragoso/keykey/blob/master/keykey/Cargo.toml
+// https://github.com/rtic-rs/cortex-m-rtic
+
 // #![deny(unsafe_code)]
 
 #![cfg_attr(not(test), no_std)]
@@ -39,7 +43,7 @@ mod ringbuffer;
 mod serial;
 mod string;
 
-
+static mut g_v: usize = 0;
 
 #[cfg_attr(not(test), entry)]
 fn main() -> ! {
@@ -47,7 +51,6 @@ fn main() -> ! {
     let cp = cortex_m::Peripherals::take().unwrap();
     // Get access to the device specific peripherals from the peripheral access crate
     let dp = pac::Peripherals::take().unwrap();
-
 
     // Take ownership over the raw flash and rcc devices and convert them into the corresponding
     // HAL structs
@@ -104,6 +107,10 @@ fn main() -> ! {
     let mut v = 0usize;
     loop {
         v += 1;
+        unsafe {
+            g_v =v ;
+            core::ptr::read_volatile(&g_v);
+        }
         s.service();
         // wfi();
         if (v % 100000 != 0) {
@@ -112,9 +119,10 @@ fn main() -> ! {
         // let z = format!("{}", v);
         let mut d: string::StackString = Default::default();
 
-        core::fmt::write(&mut d, format_args!("{}\n", v));
+        core::fmt::write(&mut d, format_args!("{}\n", v)).expect("");
         // v.write_str("\n").unwrap();
         s.write(d.data());
+        s.write(&[73]);
         // delay.delay_ms(1_00_u16);
     }
 }
