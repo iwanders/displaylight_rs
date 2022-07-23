@@ -9,8 +9,14 @@ pub struct ReadOverrun();
     read_pos denotes up to where we have read.
 */
 
+
+use core::cell::UnsafeCell;
+use core::mem::MaybeUninit;
+
+use core::sync::atomic::AtomicUsize;
 /// Simple ringbuffer, holds up to N - 1 elements.
 pub struct RingBuffer<T: Copy + Default, const N: usize> {
+    // array: [UnsafeCell<MaybeUninit<T>>; N],
     array: [T; N],
     read_pos: usize,
     write_pos: usize,
@@ -89,11 +95,6 @@ impl<T: Copy + Default, const N: usize> RingBuffer<T, { N }> {
         self.write_pos = (self.write_pos + 1) % N;
         Ok(())
     }
-    pub unsafe fn write_value_unsafe(&self, value: T) -> Result<(), WriteOverrun> {
-        let self_mut = core::mem::transmute::<_, &mut Self>(self);
-        self_mut.write_value(value)
-    }
-
 
     /// Get the number of entries that are at least available for read.
     pub fn read_available(&self) -> usize {
@@ -114,10 +115,6 @@ impl<T: Copy + Default, const N: usize> RingBuffer<T, { N }> {
             return Some(v);
         }
         None
-    }
-    pub unsafe fn read_value_unsafe(&self) -> Option<T>  {
-        let self_mut = core::mem::transmute::<_, &mut Self>(self);
-        self_mut.read_value()
     }
 
     /// Get the longest available read slice.
@@ -141,11 +138,14 @@ impl<T: Copy + Default, const N: usize> RingBuffer<T, { N }> {
     }
 
 
+    /*
     pub fn split<'a>(&'a mut self) -> (Reader<'a, T, N>, Writer<'a, T, N>) {
         (Reader::new(self), Writer::new(self))
     }
+    */
 }
 
+/*
 pub struct Writer<'a, T: Copy + Default, const N: usize> {
     buffer: &'a RingBuffer<T, { N }>,
 }
@@ -177,7 +177,7 @@ impl<'a, T: Copy + Default, const N: usize> Reader<'a, T, { N }> {
         }
     }
 }
-
+*/
 
 #[cfg(test)]
 mod tests {
