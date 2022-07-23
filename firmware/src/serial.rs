@@ -106,7 +106,7 @@ impl Serial {
 
     pub fn service(&mut self) {
         usb_interrupt();
-        write_from_buffer();
+        // write_from_buffer();
         // read_to_buffer();
         // usb_interrupt();
     }
@@ -146,7 +146,9 @@ fn USB_LP_CAN_RX0() {
 }
 
 fn write_from_buffer() {
-    cortex_m::interrupt::free(|cs| {
+    cortex_m::interrupt::disable();
+    // cortex_m::interrupt::free(|cs| {
+        let cs = unsafe{&cortex_m::interrupt::CriticalSection::new()};
         let mut serial_borrow = unsafe { USB_SERIAL.borrow(cs).borrow_mut() };
         let serial = serial_borrow.as_mut().unwrap();
         let usb_dev = unsafe { USB_DEVICE.as_mut().unwrap() };
@@ -155,11 +157,14 @@ fn write_from_buffer() {
             serial.write(&[z.read_value().unwrap()]).ok();
             usb_dev.poll(&mut [serial]);
         }
-    });
+    // });
+    unsafe{cortex_m::interrupt::enable();}
 }
 
 fn read_to_buffer() {
-    cortex_m::interrupt::free(|cs| {
+    cortex_m::interrupt::disable();
+    // cortex_m::interrupt::free(|cs| {
+        let cs = unsafe{&cortex_m::interrupt::CriticalSection::new()};
         let mut serial_borrow = unsafe { USB_SERIAL.borrow(cs).borrow_mut() };
         let serial = serial_borrow.as_mut().unwrap();
         let usb_dev = unsafe { USB_DEVICE.as_mut().unwrap() };
@@ -179,11 +184,14 @@ fn read_to_buffer() {
             }
             _ => {}
         }
-    });
+    // });
+    unsafe{cortex_m::interrupt::enable();}
 }
 
 fn usb_interrupt() {
-    cortex_m::interrupt::free(|cs| {
+    cortex_m::interrupt::disable();
+    // cortex_m::interrupt::free(|cs| {
+        let cs = unsafe{&cortex_m::interrupt::CriticalSection::new()};
         let mut serial_borrow = unsafe { USB_SERIAL.borrow(&cs).borrow_mut() };
         let serial = serial_borrow.as_mut().unwrap();
         let usb_dev = unsafe { USB_DEVICE.as_mut().unwrap() };
@@ -191,5 +199,6 @@ fn usb_interrupt() {
         if !usb_dev.poll(&mut [serial]) {
             return;
         }
-    });
+    // });
+    unsafe{cortex_m::interrupt::enable();}
 }
