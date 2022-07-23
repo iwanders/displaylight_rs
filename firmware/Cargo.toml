@@ -23,7 +23,7 @@ usbd-serial = "0.1.1"
 
 [dependencies.cortex-m]
 version = "0.7.4"
-features = ["cm7"]
+features = []
 
 
 [dependencies.stm32f1xx-hal]

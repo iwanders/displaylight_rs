@@ -1,8 +1,3 @@
-static mut USB_BUS: Option<UsbBusAllocator<UsbBusType>> = None;
-static mut USB_SERIAL: Option<usbd_serial::SerialPort<UsbBusType>> = None;
-static mut USB_DEVICE: Option<UsbDevice<UsbBusType>> = None;
-
-
 // On the whole sharing;
 // https://github.com/rust-embedded/wg/issues/294#issuecomment-454425980
 // https://github.com/rust-embedded/wg/issues/294#issuecomment-456416517
@@ -29,27 +24,31 @@ use core::ops::DerefMut;
 // use crate::ringbuffer;
 use crate::spsc;
 
-const RX_BUFFER_SIZE : usize = 64;
+const RX_BUFFER_SIZE: usize = 64;
 type RxBuffer = spsc::SpScRingbuffer<u8, { RX_BUFFER_SIZE }>;
 type RxWriter<'a> = spsc::Writer<'a, u8, RX_BUFFER_SIZE>;
 type RxReader<'a> = spsc::Reader<'a, u8, RX_BUFFER_SIZE>;
 
-const TX_BUFFER_SIZE : usize = 64;
+const TX_BUFFER_SIZE: usize = 64;
 type TxBuffer = spsc::SpScRingbuffer<u8, { TX_BUFFER_SIZE }>;
 type TxWriter<'a> = spsc::Writer<'a, u8, TX_BUFFER_SIZE>;
 type TxReader<'a> = spsc::Reader<'a, u8, TX_BUFFER_SIZE>;
-
 
 // Microcontroller to PC
 static mut BUFFER_TO_HOST: TxBuffer = TxBuffer::new();
 static mut BUFFER_TO_HOST_WRITER: Option<TxWriter> = None;
 static mut BUFFER_TO_HOST_READER: Option<TxReader> = None;
 
-
 // PC to microcontroller.
 static mut BUFFER_FROM_HOST: RxBuffer = RxBuffer::new();
 static mut BUFFER_FROM_HOST_WRITER: Option<RxWriter> = None;
 static mut BUFFER_FROM_HOST_READER: Option<RxReader> = None;
+
+// Actual usb things.
+static mut USB_BUS: Option<UsbBusAllocator<UsbBusType>> = None;
+static mut USB_SERIAL: Mutex<RefCell<Option<usbd_serial::SerialPort<UsbBusType>>>> =
+    Mutex::new(RefCell::new(None));
+static mut USB_DEVICE: Option<UsbDevice<UsbBusType>> = None;
 
 /// Serial object is the main interface to the ringbuffers that are serviced by the ISR.
 pub struct Serial {}
@@ -62,7 +61,9 @@ impl Serial {
 
             USB_BUS = Some(bus);
 
-            USB_SERIAL = Some(SerialPort::new(USB_BUS.as_ref().unwrap()));
+            USB_SERIAL = Mutex::new(RefCell::new(Some(SerialPort::new(
+                USB_BUS.as_ref().unwrap(),
+            ))));
 
             let usb_dev =
                 UsbDeviceBuilder::new(USB_BUS.as_ref().unwrap(), UsbVidPid(0x16c0, 0x27dd))
@@ -93,9 +94,8 @@ impl Serial {
         Serial {}
     }
 
-
     pub fn write(&mut self, data: &[u8]) {
-        let writer = unsafe{ BUFFER_TO_HOST_WRITER.as_mut().unwrap() };
+        let writer = unsafe { BUFFER_TO_HOST_WRITER.as_mut().unwrap() };
         for v in data {
             let r = writer.write_value(*v);
             if r.is_err() {
@@ -108,16 +108,16 @@ impl Serial {
         usb_interrupt();
         write_from_buffer();
         // read_to_buffer();
-        usb_interrupt();
+        // usb_interrupt();
     }
 
     pub fn available(&self) -> bool {
-        let reader = unsafe{ BUFFER_FROM_HOST_READER.as_mut().unwrap() };
+        let reader = unsafe { BUFFER_FROM_HOST_READER.as_mut().unwrap() };
         reader.is_empty()
     }
 
     pub fn read(&self) -> Option<u8> {
-        let reader = unsafe{ BUFFER_FROM_HOST_READER.as_mut().unwrap() };
+        let reader = unsafe { BUFFER_FROM_HOST_READER.as_mut().unwrap() };
         reader.read_value()
     }
 
@@ -147,18 +147,23 @@ fn USB_LP_CAN_RX0() {
 
 fn write_from_buffer() {
     cortex_m::interrupt::free(|cs| {
-        let serial = unsafe { USB_SERIAL.as_mut().unwrap() };
-        let z = unsafe{ BUFFER_TO_HOST_READER.as_mut().unwrap() };
+        let mut serial_borrow = unsafe { USB_SERIAL.borrow(cs).borrow_mut() };
+        let serial = serial_borrow.as_mut().unwrap();
+        let usb_dev = unsafe { USB_DEVICE.as_mut().unwrap() };
+        let z = unsafe { BUFFER_TO_HOST_READER.as_mut().unwrap() };
         while !z.is_empty() {
             serial.write(&[z.read_value().unwrap()]).ok();
+            usb_dev.poll(&mut [serial]);
         }
     });
 }
 
 fn read_to_buffer() {
     cortex_m::interrupt::free(|cs| {
-        let serial = unsafe { USB_SERIAL.as_mut().unwrap() };
-        let writer = unsafe{ BUFFER_FROM_HOST_WRITER.as_mut().unwrap() };
+        let mut serial_borrow = unsafe { USB_SERIAL.borrow(cs).borrow_mut() };
+        let serial = serial_borrow.as_mut().unwrap();
+        let usb_dev = unsafe { USB_DEVICE.as_mut().unwrap() };
+        let writer = unsafe { BUFFER_FROM_HOST_WRITER.as_mut().unwrap() };
 
         let mut buf = [0u8; 64];
 
@@ -178,9 +183,10 @@ fn read_to_buffer() {
 }
 
 fn usb_interrupt() {
-    cortex_m::interrupt::free(|v| {
+    cortex_m::interrupt::free(|cs| {
+        let mut serial_borrow = unsafe { USB_SERIAL.borrow(&cs).borrow_mut() };
+        let serial = serial_borrow.as_mut().unwrap();
         let usb_dev = unsafe { USB_DEVICE.as_mut().unwrap() };
-        let serial = unsafe { USB_SERIAL.as_mut().unwrap() };
 
         if !usb_dev.poll(&mut [serial]) {
             return;

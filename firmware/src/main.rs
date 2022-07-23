@@ -40,8 +40,8 @@ use stm32f1xx_hal::usb::Peripheral;
 
 // use cortex_m_rt::entry;
 mod ringbuffer;
-mod spsc;
 mod serial;
+mod spsc;
 mod string;
 
 static mut g_v: usize = 0;
@@ -115,7 +115,7 @@ fn main() -> ! {
         s.service();
         // wfi();
         if (v % 100000 != 0) {
-            continue;
+        continue;
         }
         // let z = format!("{}", v);
         let mut d: string::StackString = Default::default();
@@ -125,15 +125,13 @@ fn main() -> ! {
         s.write(d.data());
         s.write(&[73]);
         // delay.delay_ms(1_00_u16);
-        // if s.available() {
-            // loop {
-                // if let Some(v) = s.read() {
-                    // s.write(&[v + 20]);
-                // }
-                // else {
-                    // break;
-                // }
-            // }
-        // }
+
+        while s.available() {
+            if let Some(v) = s.read() {
+                s.write(&[v + 20]);
+            } else {
+                break;
+            }
+        }
     }
 }
