@@ -37,6 +37,26 @@ use displaylight_fw::serial;
 // use displaylight_fw::spsc;
 use displaylight_fw::string;
 
+
+use stm32f1xx_hal::{
+    spi::{Mode, Phase, Polarity, Spi},
+};
+
+
+
+#[repr(C, packed)]
+#[derive(Default, Copy, Clone)]
+/// Struct to represent the RGB state of a single led.
+pub struct RGB {
+    pub r: u8,
+    pub g: u8,
+    pub b: u8,
+}
+
+
+
+use cortex_m::{singleton};
+
 static mut G_V: usize = 0;
 
 #[cfg_attr(not(test), entry)]
@@ -96,6 +116,65 @@ fn main() -> ! {
     };
 
     let mut s = serial::Serial::new(usb);
+
+
+
+    // https://github.com/stm32-rs/stm32f1xx-hal/blob/f9b24f4d9bac7fc3c93764bd295125800944f53b/examples/spi-dma.rs
+    // https://github.com/stm32-rs/stm32f1xx-hal/blob/f9b24f4d9bac7fc3c93764bd295125800944f53b/examples/adc-dma-circ.rs
+    // We want an SPI transaction that just keeps writing bytes on the port.
+    // 
+    // spi on bus B
+    let mut gpiob = dp.GPIOB.split();
+    let pins = (
+        gpiob.pb13.into_alternate_push_pull(&mut gpiob.crh),
+        gpiob.pb14.into_floating_input(&mut gpiob.crh),
+        gpiob.pb15.into_alternate_push_pull(&mut gpiob.crh),
+    );
+
+    let spi_mode = Mode {
+        polarity: Polarity::IdleLow,
+        phase: Phase::CaptureOnFirstTransition,
+    };
+    let spi = Spi::spi2(dp.SPI2, pins, spi_mode, 3.MHz(), clocks);
+    // From datasheet:
+    //            _______
+    // 0 code:   |T0H    |_T0L____|
+    //            _________
+    // 1 code:   |T1H      |_T1L__|
+    //
+    // ret:      |____Tret________|
+    //
+    // 3 MHz gives us 3.3333333333333335e-07 per bit, which is 0.3 us
+    // OctoWs2811 has;
+    // T0H: 0.3 us
+    // T1H: 0.75 us
+    // TH_TL: 1.25 us
+    // 1.25 / 0.3 = ~ 4.1 may be able to put two bits in a single SPI byte?
+    // Start with
+    // 0 bit represented by spi byte: 0b10000000
+    // 1 bit represented by spi byte: 0b11100000
+
+    // Set up the DMA device
+    let dma = dp.DMA1.split();
+
+    // Connect the SPI device to the DMA
+
+    // 
+    let buf = singleton!(: [[u8; 8]; 2] = [[0; 8]; 2]).unwrap();
+
+    let spi_dma = spi.with_tx_dma(dma.5);
+    // let mut circ_buffer = spi_dma.write(buf);
+
+    // Start a DMA transfer
+    let transfer = spi_dma.write(buf);
+    // - spi
+
+    
+    // Wait for it to finnish. The transfer takes ownership over the SPI device
+    // and the data being sent anb those things are returned by transfer.wait
+    let (_buffer, _spi_dma) = transfer.wait();
+
+
 
     let mut v = 0usize;
     let mut led_state: bool = false;
