@@ -136,8 +136,9 @@ fn main() -> ! {
 
     // 
     let buf = singleton!(: [u8; 4 * 3 * 8] = [0; 4 * 3 * 8]).unwrap();
-    // let mut colors = [RGB::RED, RGB::GREEN, RGB::BLUE, RGB::WHITE];
-    let mut colors = [RGB::BLACK, RGB::RED, RGB::GREEN, RGB::BLUE];
+    let mut colors = [RGB::RED, RGB::GREEN, RGB::BLUE, RGB::WHITE];
+    // let mut colors = [RGB::BLACK, RGB::BLACK, RGB::BLACK, RGB::BLACK];
+    // let mut colors = [RGB::BLACK, RGB::RED, RGB::GREEN, RGB::BLUE];
     let _  = colors.iter_mut().map(|x| x.limit(1)).collect::<()>();
     convert_color_to_buffer(&colors, &mut buf[..]);
 
@@ -145,13 +146,13 @@ fn main() -> ! {
     // let mut circ_buffer = spi_dma.write(buf);
 
     // Start a DMA transfer
-    let transfer = spi_dma.write(buf);
+    let mut transfer = spi_dma.write(buf);
     // - spi
 
     
     // Wait for it to finnish. The transfer takes ownership over the SPI device
     // and the data being sent anb those things are returned by transfer.wait
-    let (_buffer, _spi_dma) = transfer.wait();
+    // let (_buffer, _spi_dma) = transfer.wait();
 
 
 
@@ -168,6 +169,15 @@ fn main() -> ! {
         if v % 100000 != 0 {
             continue;
         }
+
+        if transfer.is_done() {
+            let (buf, spi_dma) = transfer.wait();
+            transfer = spi_dma.write(buf);
+            let mut d: string::StackString = Default::default();
+            core::fmt::write(&mut d, format_args!("new transfer\n")).expect("");
+            s.write(d.data());
+        }
+
         // let z = format!("{}", v);
         let mut d: string::StackString = Default::default();
 
@@ -179,7 +189,6 @@ fn main() -> ! {
         led_state = !led_state;
 
         core::fmt::write(&mut d, format_args!("{}\n", v)).expect("");
-        // v.write_str("\n").unwrap();
         s.write(d.data());
         // delay.delay_ms(1_00_u16);
 

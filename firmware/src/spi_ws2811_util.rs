@@ -21,7 +21,7 @@ use crate::types::{RGB};
 
 // Hardcode on 3Mhz spi bus for now.
 const WS2811_0BIT: u8 = 0b10000000;
-const WS2811_1BIT: u8 = 0b11110000;
+const WS2811_1BIT: u8 = 0b11100000;
 
 
 
