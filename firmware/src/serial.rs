@@ -104,6 +104,7 @@ impl Serial {
 
         unsafe {
             NVIC::unmask(Interrupt::USB_HP_CAN_TX);
+            // Enabling this and servicing the usb device causes cascading interrupts.
             // NVIC::unmask(Interrupt::USB_LP_CAN_RX0);
         }
         Serial {}
@@ -123,7 +124,6 @@ impl Serial {
         usb_interrupt();
         write_from_buffer();
         read_to_buffer();
-        // usb_interrupt();
     }
 
     pub fn available(&self) -> bool {
@@ -155,20 +155,17 @@ fn USB_HP_CAN_TX() {
     usb_interrupt();
 }
 
-#[interrupt]
-fn USB_LP_CAN_RX0() {
-    usb_interrupt();
-}
+// #[interrupt]
+// fn USB_LP_CAN_RX0() {
+// usb_interrupt();
+// }
 
-fn go_to_overflow() -> !{
-    loop{}
+fn go_to_overflow() -> ! {
+    loop {}
 }
 
 fn write_from_buffer() {
-    // cortex_m::interrupt::disable();
-    // unsafe {disable();}
     cortex_m::interrupt::free(|cs| {
-        // {
         let cs = unsafe { &cortex_m::interrupt::CriticalSection::new() };
         let mut serial_borrow = unsafe { USB_SERIAL.borrow(cs).borrow_mut() };
         let serial = serial_borrow.as_mut().unwrap();
@@ -177,19 +174,13 @@ fn write_from_buffer() {
         while !z.is_empty() {
             if let Ok(v) = serial.write(&[z.read_value().unwrap()]) {
             } else {
-                go_to_overflow();
+                // go_to_overflow();
             }
-            // usb_dev.poll(&mut [serial]);
         }
-        // }
     });
-    // unsafe{cortex_m::interrupt::enable();}
-    // unsafe {enable();}
 }
 
 fn read_to_buffer() {
-    // unsafe {disable();}
-    // {
     cortex_m::interrupt::free(|cs| {
         let cs = unsafe { &cortex_m::interrupt::CriticalSection::new() };
         let mut serial_borrow = unsafe { USB_SERIAL.borrow(cs).borrow_mut() };
@@ -201,7 +192,6 @@ fn read_to_buffer() {
 
         match serial.read(&mut buf) {
             Ok(count) if count > 0 => {
-                // let adv = buffer.write_advance(count);
                 for i in 0..count {
                     let res = writer.write_value(buf[i]);
                     if res.is_err() {
@@ -211,14 +201,10 @@ fn read_to_buffer() {
             }
             _ => {}
         }
-        // }
     });
-    // unsafe {enable();}
 }
 
 fn usb_interrupt() {
-    // unsafe {disable();}
-    // {
     cortex_m::interrupt::free(|cs| {
         let cs = unsafe { &cortex_m::interrupt::CriticalSection::new() };
         let mut serial_borrow = unsafe { USB_SERIAL.borrow(&cs).borrow_mut() };
@@ -228,7 +214,5 @@ fn usb_interrupt() {
         if !usb_dev.poll(&mut [serial]) {
             return;
         }
-        // }
     });
-    // unsafe {enable();}
 }

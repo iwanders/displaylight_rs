@@ -104,8 +104,6 @@ fn main() -> ! {
 
     let mut s = serial::Serial::new(usb);
 
-
-
     let mut v = 0usize;
     let mut led_state: bool = false;
     loop {
@@ -132,7 +130,6 @@ fn main() -> ! {
         core::fmt::write(&mut d, format_args!("{}\n", v)).expect("");
         // v.write_str("\n").unwrap();
         s.write(d.data());
-        s.write(&[73]);
         // delay.delay_ms(1_00_u16);
 
         while s.available() {
