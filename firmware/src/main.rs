@@ -164,6 +164,16 @@ fn main() -> ! {
     // and the data being sent anb those things are returned by transfer.wait
     // let (_buffer, _spi_dma) = transfer.wait();
 
+    // let mut my_timer = dp.TIM2.counter_us(&clocks);
+    // my_timer.configure(&clocks);
+    // my_timer.start(1<<32);
+    // my_timer.start(100.millis()).unwrap();
+    let mut my_timer = dp.TIM2.counter_ms(&clocks);
+    my_timer.start(10.secs()).unwrap();
+    // let mut my_timer = stm32f1xx_hal::timer::FTimerUs::new(dp.TIM2, &clocks).counter_us();
+
+    let mut delay = dp.TIM3.delay_us(&clocks);
+
     let mut v = 0usize;
     let mut led_state: bool = false;
     loop {
@@ -196,9 +206,12 @@ fn main() -> ! {
         }
         led_state = !led_state;
 
-        core::fmt::write(&mut d, format_args!("{}\n", v)).expect("");
+        let tic = my_timer.now();
+        delay.delay_ms(10u16);
+        let toc = my_timer.now();
+
+        core::fmt::write(&mut d, format_args!("{} {}, {}\n", v, tic, toc)).expect("");
         s.write(d.data());
-        // delay.delay_ms(1_00_u16);
 
         while s.available() {
             if let Some(v) = s.read() {
