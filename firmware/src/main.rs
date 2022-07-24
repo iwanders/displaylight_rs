@@ -134,12 +134,12 @@ fn main() -> ! {
     // Connect the SPI device to the DMA
 
     // 
-    let buf = singleton!(: [u8; 4 * 3 * 8] = [0; 4 * 3 * 8]).unwrap();
-    // let mut colors = [RGB::RED, RGB::GREEN, RGB::BLUE, RGB::WHITE];
+    let buf = singleton!(: [u8; (4 + 1)* 3 * 8] = [0; (4 + 1)* 3 * 8]).unwrap();
+    let mut colors = [RGB::RED, RGB::GREEN, RGB::BLUE, RGB::WHITE];
     // let mut colors = [RGB::BLACK, RGB::BLACK, RGB::BLACK, RGB::BLACK];
-    let mut colors = [RGB::BLACK, RGB::RED, RGB::GREEN, RGB::BLUE];
+    // let mut colors = [RGB::BLACK, RGB::RED, RGB::GREEN, RGB::BLUE];
     let _  = colors.iter_mut().map(|x| x.limit(1)).collect::<()>();
-    spi_ws2811_util::convert_color_to_buffer(&colors, &mut buf[..]);
+    spi_ws2811_util::convert_color_to_buffer(&colors, &mut buf[(3*8)..]);
     // spi_ws2811_util::dense::convert_color_to_buffer(&colors, &mut buf[..]);
 
     let spi_dma = spi.with_tx_dma(dma.5);
