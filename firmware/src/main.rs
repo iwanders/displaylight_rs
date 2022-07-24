@@ -107,6 +107,7 @@ fn main() -> ! {
 
 
     let mut v = 0usize;
+    let mut led_state: bool = false;
     loop {
         v += 1;
         unsafe {
@@ -120,6 +121,13 @@ fn main() -> ! {
         }
         // let z = format!("{}", v);
         let mut d: string::StackString = Default::default();
+
+        if led_state {
+            led.set_low();
+        } else {
+            led.set_high();
+        }
+        led_state = !led_state;
 
         core::fmt::write(&mut d, format_args!("{}\n", v)).expect("");
         // v.write_str("\n").unwrap();

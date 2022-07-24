@@ -103,8 +103,8 @@ impl Serial {
         }
 
         unsafe {
-            // NVIC::unmask(Interrupt::USB_HP_CAN_TX);
-            // NVIC::unmask(Interrupt::USB_LP_CAN_RX0);
+            NVIC::unmask(Interrupt::USB_HP_CAN_TX);
+            NVIC::unmask(Interrupt::USB_LP_CAN_RX0);
         }
         Serial {}
     }
