@@ -23,7 +23,7 @@ usbd-serial = "0.1.1"
 
 [dependencies.cortex-m]
 version = "0.7.5"
-features = ["cm7"]
+features = ["cm7-r0p1"]
 #git = "https://github.com/rust-embedded/cortex-m"
 #rev = "4e908625204a1e95dd3fd5bdcd8d66d6bc11c3bc" 
 

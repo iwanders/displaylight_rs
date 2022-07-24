@@ -104,7 +104,7 @@ impl Serial {
 
         unsafe {
             NVIC::unmask(Interrupt::USB_HP_CAN_TX);
-            NVIC::unmask(Interrupt::USB_LP_CAN_RX0);
+            // NVIC::unmask(Interrupt::USB_LP_CAN_RX0);
         }
         Serial {}
     }
@@ -120,10 +120,10 @@ impl Serial {
     }
 
     pub fn service(&mut self) {
-        // usb_interrupt();
+        usb_interrupt();
         write_from_buffer();
         read_to_buffer();
-        usb_interrupt();
+        // usb_interrupt();
     }
 
     pub fn available(&self) -> bool {
