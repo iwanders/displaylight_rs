@@ -2,7 +2,7 @@
 
 pub mod ringbuffer;
 pub mod serial;
+pub mod spi_ws2811_util;
 pub mod spsc;
 pub mod string;
 pub mod types;
-pub mod spi_ws2811_util;

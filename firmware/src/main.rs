@@ -35,16 +35,13 @@ use stm32f1xx_hal::usb::Peripheral;
 // use displaylight_fw::ringbuffer;
 use displaylight_fw::serial;
 // use displaylight_fw::spsc;
-use displaylight_fw::string;
-use displaylight_fw::types::{RGB};
 use displaylight_fw::spi_ws2811_util;
+use displaylight_fw::string;
+use displaylight_fw::types::RGB;
 
+use stm32f1xx_hal::spi::{Mode, Phase, Polarity, Spi};
 
-use stm32f1xx_hal::{
-    spi::{Mode, Phase, Polarity, Spi},
-};
-
-use cortex_m::{singleton};
+use cortex_m::singleton;
 
 static mut G_V: usize = 0;
 
@@ -106,15 +103,14 @@ fn main() -> ! {
 
     let mut s = serial::Serial::new(usb);
 
-
-
     // https://github.com/stm32-rs/stm32f1xx-hal/blob/f9b24f4d9bac7fc3c93764bd295125800944f53b/examples/spi-dma.rs
     // https://github.com/stm32-rs/stm32f1xx-hal/blob/f9b24f4d9bac7fc3c93764bd295125800944f53b/examples/adc-dma-circ.rs
     // We want an SPI transaction that just keeps writing bytes on the port.
-    // 
+    //
     // spi on bus B
     let mut gpiob = dp.GPIOB.split();
-    let pins = (// (sck, miso, mosi)
+    let pins = (
+        // (sck, miso, mosi)
         // gpiob.pb13.into_alternate_push_pull(&mut gpiob.crh),
         stm32f1xx_hal::spi::NoSck,
         // gpiob.pb14.into_floating_input(&mut gpiob.crh),
@@ -133,10 +129,10 @@ fn main() -> ! {
 
     // Connect the SPI device to the DMA
 
-    const leds : usize = 226;
+    const leds: usize = 226;
     // let mut colors = [RGB::RED, RGB::GREEN, RGB::BLUE, RGB::WHITE];
     // let buf: [u8; (leds + 1) * 3 * 8] = [0; (leds+ 1) * 3 * 8];
-    // 
+    //
     let buf = singleton!(: [u8; (leds + 1)* 3 * 8] = [0; (leds + 1)* 3 * 8]).unwrap();
     let mut colors: [RGB; leds] = [RGB::BLACK; leds];
     for i in 0..leds {
@@ -153,8 +149,8 @@ fn main() -> ! {
     }
     // let mut colors = [RGB::BLACK, RGB::BLACK, RGB::BLACK, RGB::BLACK];
     // let mut colors = [RGB::BLACK, RGB::RED, RGB::GREEN, RGB::BLUE];
-    let _  = colors.iter_mut().map(|x| x.limit(1)).collect::<()>();
-    spi_ws2811_util::convert_color_to_buffer(&colors, &mut buf[(3*8)..]);
+    let _ = colors.iter_mut().map(|x| x.limit(1)).collect::<()>();
+    spi_ws2811_util::convert_color_to_buffer(&colors, &mut buf[(3 * 8)..]);
     // spi_ws2811_util::dense::convert_color_to_buffer(&colors, &mut buf[..]);
 
     let spi_dma = spi.with_tx_dma(dma.5);
@@ -164,12 +160,9 @@ fn main() -> ! {
     let mut transfer = spi_dma.write(buf);
     // - spi
 
-    
     // Wait for it to finnish. The transfer takes ownership over the SPI device
     // and the data being sent anb those things are returned by transfer.wait
     // let (_buffer, _spi_dma) = transfer.wait();
-
-
 
     let mut v = 0usize;
     let mut led_state: bool = false;

@@ -1,5 +1,4 @@
-
-use crate::types::{RGB};
+use crate::types::RGB;
 
 /*
 From datasheet:
@@ -42,46 +41,44 @@ on the expanded data...
 const WS2811_0BIT: u8 = 0b10000000;
 const WS2811_1BIT: u8 = 0b11100000;
 
-pub fn convert_color_to_buffer(colors: &[RGB], buffer: &mut [u8])  {
+pub fn convert_color_to_buffer(colors: &[RGB], buffer: &mut [u8]) {
     assert_eq!(colors.len() * 3 * 8, buffer.len());
     let mut buffer_i = 0usize;
     for c in colors.iter() {
         for b in &[c.g, c.r, c.b] {
             for i in (0..8).rev() {
-                let bit_set = if ((b >> i) & 1) == 1 { true } else { false};
-                buffer[buffer_i] = if bit_set {WS2811_1BIT} else {WS2811_0BIT};
+                let bit_set = if ((b >> i) & 1) == 1 { true } else { false };
+                buffer[buffer_i] = if bit_set { WS2811_1BIT } else { WS2811_0BIT };
                 buffer_i = buffer_i + 1;
             }
         }
     }
 }
 
-
 // Nope... :(
 pub mod dense {
-use super::*;
-const WS2811_0BIT: u8 = 0b1000;
-const WS2811_1BIT: u8 = 0b1100;
+    use super::*;
+    const WS2811_0BIT: u8 = 0b1000;
+    const WS2811_1BIT: u8 = 0b1100;
 
-pub fn convert_color_to_buffer(colors: &[RGB], buffer: &mut [u8])  {
-    assert_eq!(colors.len() * 3 * 8 / 2, buffer.len());
-    let mut buffer_i = 0usize;
-    for c in colors.iter() {
-        for b in &[c.g, c.r, c.b] {
-            for i in (0..8).rev() {
-                let bit_set = if ((b >> i) & 1) == 1 { true } else { false};
-                if i % 2 == 0 {
-                    buffer[buffer_i] |= (if bit_set {WS2811_1BIT} else {WS2811_0BIT}) << 4;
-                    buffer_i = buffer_i + 1;
-                } else {
-                    buffer[buffer_i] = if bit_set {WS2811_1BIT} else {WS2811_0BIT};
+    pub fn convert_color_to_buffer(colors: &[RGB], buffer: &mut [u8]) {
+        assert_eq!(colors.len() * 3 * 8 / 2, buffer.len());
+        let mut buffer_i = 0usize;
+        for c in colors.iter() {
+            for b in &[c.g, c.r, c.b] {
+                for i in (0..8).rev() {
+                    let bit_set = if ((b >> i) & 1) == 1 { true } else { false };
+                    if i % 2 == 0 {
+                        buffer[buffer_i] |= (if bit_set { WS2811_1BIT } else { WS2811_0BIT }) << 4;
+                        buffer_i = buffer_i + 1;
+                    } else {
+                        buffer[buffer_i] = if bit_set { WS2811_1BIT } else { WS2811_0BIT };
+                    }
                 }
             }
         }
     }
 }
-}
-
 
 #[cfg(test)]
 mod tests {
@@ -89,10 +86,10 @@ mod tests {
     #[test]
     fn state_checks() {
         let mut colors = [RGB::RED, RGB::GREEN, RGB::BLUE, RGB::WHITE];
-        let mut low_buff : [u8; 4 * 3 * 8] = [0; 4 * 3 * 8];
+        let mut low_buff: [u8; 4 * 3 * 8] = [0; 4 * 3 * 8];
         convert_color_to_buffer(&colors, &mut low_buff);
         println!("{:x?}", low_buff);
-        let mut dense_buff : [u8; 4 * 3 * 8 / 2] = [0; 4 * 3 * 8 / 2];
+        let mut dense_buff: [u8; 4 * 3 * 8 / 2] = [0; 4 * 3 * 8 / 2];
         dense::convert_color_to_buffer(&colors, &mut dense_buff);
         println!("{:x?}", dense_buff);
     }
