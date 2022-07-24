@@ -168,8 +168,12 @@ fn main() -> ! {
     // my_timer.configure(&clocks);
     // my_timer.start(1<<32);
     // my_timer.start(100.millis()).unwrap();
-    let mut my_timer = dp.TIM2.counter_ms(&clocks);
-    my_timer.start(10.secs()).unwrap();
+    // counters are 16 bit, sob
+    let mut my_timer = dp.TIM2.counter_us(&clocks);
+    my_timer.start(60.millis()).unwrap();
+
+    // let mut my_timer = _cp.SYST.counter_us(&clocks);
+    // my_timer.start(30_000.millis()).unwrap();
     // let mut my_timer = stm32f1xx_hal::timer::FTimerUs::new(dp.TIM2, &clocks).counter_us();
 
     let mut delay = dp.TIM3.delay_us(&clocks);
