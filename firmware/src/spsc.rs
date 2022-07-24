@@ -1,5 +1,3 @@
-use core::marker::Copy;
-
 pub struct WriteOverrun();
 // pub struct ReadOverrun();
 
@@ -74,7 +72,8 @@ impl<T, const N: usize> SpScRingbuffer<T, N> {
         let r_pos = self.read_pos.load(Ordering::Relaxed);
 
         // Rip the value out of the array
-        let v = unsafe { self.array[r_pos].get().read().assume_init() };
+        // only unsafe statement in this function.
+        let v = self.array[r_pos].get().read().assume_init();
 
         // Update the new read position.
         self.read_pos.store((r_pos + 1) % N, Ordering::Release);
@@ -101,7 +100,8 @@ impl<T, const N: usize> SpScRingbuffer<T, N> {
         let location = self.array[w_pos].get();
 
         // The following is safe, because r_pos can never be w_pos.
-        unsafe { location.write(MaybeUninit::new(value)) };
+        // only unsafe statement in this function.
+        location.write(MaybeUninit::new(value));
 
         // Advance the write pointer.
         self.write_pos.store((w_pos + 1) % N, Ordering::Release);
@@ -137,7 +137,7 @@ impl<'a, T, const N: usize> Reader<'a, T, { N }> {
     }
 
     pub fn is_empty(&self) -> bool {
-        unsafe { self.buffer.is_empty() }
+        self.buffer.is_empty()
     }
 
     pub fn read_value(&mut self) -> Option<T> {

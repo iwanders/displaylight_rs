@@ -9,10 +9,6 @@ pub struct ReadOverrun();
     read_pos denotes up to where we have read.
 */
 
-use core::cell::UnsafeCell;
-use core::mem::MaybeUninit;
-
-use core::sync::atomic::AtomicUsize;
 /// Simple ringbuffer, holds up to N - 1 elements.
 pub struct RingBuffer<T: Copy + Default, const N: usize> {
     // array: [UnsafeCell<MaybeUninit<T>>; N],

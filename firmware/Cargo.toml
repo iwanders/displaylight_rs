@@ -2,7 +2,7 @@
 authors = ["Ivor Wanders"]
 edition = "2021"
 readme = "README.md"
-name = "blink"
+name = "displaylight_fw"
 version = "0.1.0"
 license = "MIT OR Apache-2.0"
 

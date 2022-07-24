@@ -8,7 +8,7 @@ pub struct StackString {
 }
 impl StackString {
     pub const STACK_STRING_SIZE: usize = STACK_STRING_SIZE;
-    fn as_ptr(&self) -> *const u8 {
+    pub fn as_ptr(&self) -> *const u8 {
         self.buffer.as_ptr() as *const u8
     }
     pub fn len(&self) -> usize {

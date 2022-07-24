@@ -1,6 +1,6 @@
 #![cfg_attr(not(test), no_std)]
 
-mod ringbuffer;
-mod serial;
-mod spsc;
-mod string;
+pub mod ringbuffer;
+pub mod serial;
+pub mod spsc;
+pub mod string;

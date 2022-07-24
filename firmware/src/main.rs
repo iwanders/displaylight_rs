@@ -20,36 +20,29 @@
 #[cfg(not(test))]
 use panic_halt as _;
 
-use nb::block;
-
-use cortex_m::asm::{delay, wfi};
+use cortex_m::asm::delay;
 use cortex_m_rt::entry;
-use stm32f1xx_hal::{prelude::*, timer::Timer};
+use stm32f1xx_hal::prelude::*; //, timer::Timer
 
-// for serial.
-// use stm32f1xx_hal::usb::{Peripheral, UsbBus};
-// use usb_device::prelude::*;
-// use usbd_serial::{SerialPort, USB_CLASS_CDC};
+// use embedded_hal::digital::v2::OutputPin;
+// use embedded_hal::digital::v2::PinState::{High, Low};
 
-use embedded_hal::digital::v2::OutputPin;
-use embedded_hal::digital::v2::PinState::{High, Low};
-
-use stm32f1xx_hal::pac::{self, interrupt, Interrupt, NVIC};
-use stm32f1xx_hal::prelude::*;
+use stm32f1xx_hal::pac::{self}; // , interrupt, Interrupt, NVIC
+                                // use stm32f1xx_hal::prelude::*;
 use stm32f1xx_hal::usb::Peripheral;
 
 // use cortex_m_rt::entry;
-mod ringbuffer;
-mod serial;
-mod spsc;
-mod string;
+// use displaylight_fw::ringbuffer;
+use displaylight_fw::serial;
+// use displaylight_fw::spsc;
+use displaylight_fw::string;
 
-static mut g_v: usize = 0;
+static mut G_V: usize = 0;
 
 #[cfg_attr(not(test), entry)]
 fn main() -> ! {
     // Get access to the core peripherals from the cortex-m crate
-    let cp = cortex_m::Peripherals::take().unwrap();
+    let _cp = cortex_m::Peripherals::take().unwrap();
     // Get access to the device specific peripherals from the peripheral access crate
     let dp = pac::Peripherals::take().unwrap();
 
@@ -109,12 +102,12 @@ fn main() -> ! {
     loop {
         v += 1;
         unsafe {
-            g_v = v;
-            core::ptr::read_volatile(&g_v);
+            G_V = v;
+            core::ptr::read_volatile(&G_V);
         }
         s.service();
         // wfi();
-        if (v % 100000 != 0) {
+        if v % 100000 != 0 {
             continue;
         }
         // let z = format!("{}", v);

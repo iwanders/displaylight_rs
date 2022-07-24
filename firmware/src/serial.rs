@@ -8,36 +8,14 @@
 
 // SerialPort implements a stream.
 // CdcAcmClass implements packets...
-
-mod own_interrupt {
-    use core::arch::asm;
-    use core::sync::atomic::{compiler_fence, Ordering};
-
-    #[inline]
-    pub unsafe fn enable() {
-        compiler_fence(Ordering::SeqCst);
-        asm!("cpsie i", options(nomem, nostack)); //, preserves_flags
-    }
-    #[inline]
-    pub unsafe fn disable() {
-        asm!("cpsid i", options(nomem, nostack)); //, preserves_flags
-        compiler_fence(Ordering::SeqCst);
-    }
-}
-
-use stm32f1xx_hal::pac::{self, interrupt, Interrupt, NVIC};
-use stm32f1xx_hal::prelude::*;
+use stm32f1xx_hal::pac::{interrupt, Interrupt, NVIC};
 use stm32f1xx_hal::usb::{Peripheral, UsbBus, UsbBusType};
 use usb_device::{bus::UsbBusAllocator, prelude::*};
 use usbd_serial::{SerialPort, USB_CLASS_CDC};
 
-// use core::cell::RefCell;
+use core::cell::RefCell;
 use cortex_m::interrupt::Mutex;
 
-use core::cell::RefCell;
-use core::ops::DerefMut;
-
-// use crate::ringbuffer;
 use crate::spsc;
 
 const RX_BUFFER_SIZE: usize = 64;
@@ -160,21 +138,16 @@ fn USB_HP_CAN_TX() {
 // usb_interrupt();
 // }
 
-fn go_to_overflow() -> ! {
-    loop {}
-}
-
 fn write_from_buffer() {
     cortex_m::interrupt::free(|cs| {
-        let cs = unsafe { &cortex_m::interrupt::CriticalSection::new() };
         let mut serial_borrow = unsafe { USB_SERIAL.borrow(cs).borrow_mut() };
         let serial = serial_borrow.as_mut().unwrap();
-        let usb_dev = unsafe { USB_DEVICE.as_mut().unwrap() };
+        // let usb_dev = unsafe { USB_DEVICE.as_mut().unwrap() };
         let z = unsafe { BUFFER_TO_HOST_READER.as_mut().unwrap() };
         while !z.is_empty() {
-            if let Ok(v) = serial.write(&[z.read_value().unwrap()]) {
+            if let Ok(_v) = serial.write(&[z.read_value().unwrap()]) {
             } else {
-                // go_to_overflow();
+                // overflow here... what to do? Drop bytes sounds nice...
             }
         }
     });
@@ -182,10 +155,9 @@ fn write_from_buffer() {
 
 fn read_to_buffer() {
     cortex_m::interrupt::free(|cs| {
-        let cs = unsafe { &cortex_m::interrupt::CriticalSection::new() };
         let mut serial_borrow = unsafe { USB_SERIAL.borrow(cs).borrow_mut() };
         let serial = serial_borrow.as_mut().unwrap();
-        let usb_dev = unsafe { USB_DEVICE.as_mut().unwrap() };
+        // let usb_dev = unsafe { USB_DEVICE.as_mut().unwrap() };
         let writer = unsafe { BUFFER_FROM_HOST_WRITER.as_mut().unwrap() };
 
         let mut buf = [0u8; 64];
@@ -206,7 +178,6 @@ fn read_to_buffer() {
 
 fn usb_interrupt() {
     cortex_m::interrupt::free(|cs| {
-        let cs = unsafe { &cortex_m::interrupt::CriticalSection::new() };
         let mut serial_borrow = unsafe { USB_SERIAL.borrow(&cs).borrow_mut() };
         let serial = serial_borrow.as_mut().unwrap();
         let usb_dev = unsafe { USB_DEVICE.as_mut().unwrap() };
