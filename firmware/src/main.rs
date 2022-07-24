@@ -133,9 +133,24 @@ fn main() -> ! {
 
     // Connect the SPI device to the DMA
 
+    const leds : usize = 226;
+    // let mut colors = [RGB::RED, RGB::GREEN, RGB::BLUE, RGB::WHITE];
+    // let buf: [u8; (leds + 1) * 3 * 8] = [0; (leds+ 1) * 3 * 8];
     // 
-    let buf = singleton!(: [u8; (4 + 1)* 3 * 8] = [0; (4 + 1)* 3 * 8]).unwrap();
-    let mut colors = [RGB::RED, RGB::GREEN, RGB::BLUE, RGB::WHITE];
+    let buf = singleton!(: [u8; (leds + 1)* 3 * 8] = [0; (leds + 1)* 3 * 8]).unwrap();
+    let mut colors: [RGB; leds] = [RGB::BLACK; leds];
+    for i in 0..leds {
+        let v = i % 4;
+        if v == 0 {
+            colors[i] = RGB::RED;
+        } else if v == 1 {
+            colors[i] = RGB::GREEN;
+        } else if v == 2 {
+            colors[i] = RGB::BLUE;
+        } else if v == 3 {
+            colors[i] = RGB::WHITE;
+        }
+    }
     // let mut colors = [RGB::BLACK, RGB::BLACK, RGB::BLACK, RGB::BLACK];
     // let mut colors = [RGB::BLACK, RGB::RED, RGB::GREEN, RGB::BLUE];
     let _  = colors.iter_mut().map(|x| x.limit(1)).collect::<()>();
