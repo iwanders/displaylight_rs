@@ -34,6 +34,7 @@ Maybe, at a lower clock frequency, we can actually cram two bits into each byte?
 on the expanded data...
 
 2MHz gives 1 bit at 0.5us
+// Nope, didn't work, everything goes white.
 
 */
 

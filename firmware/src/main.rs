@@ -114,9 +114,11 @@ fn main() -> ! {
     // 
     // spi on bus B
     let mut gpiob = dp.GPIOB.split();
-    let pins = (
-        gpiob.pb13.into_alternate_push_pull(&mut gpiob.crh),
-        gpiob.pb14.into_floating_input(&mut gpiob.crh),
+    let pins = (// (sck, miso, mosi)
+        // gpiob.pb13.into_alternate_push_pull(&mut gpiob.crh),
+        stm32f1xx_hal::spi::NoSck,
+        // gpiob.pb14.into_floating_input(&mut gpiob.crh),
+        stm32f1xx_hal::spi::NoMiso,
         gpiob.pb15.into_alternate_push_pull(&mut gpiob.crh),
     );
 
