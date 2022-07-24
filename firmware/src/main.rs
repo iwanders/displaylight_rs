@@ -36,22 +36,14 @@ use stm32f1xx_hal::usb::Peripheral;
 use displaylight_fw::serial;
 // use displaylight_fw::spsc;
 use displaylight_fw::string;
+use displaylight_fw::types::{RGB};
+use displaylight_fw::spi_ws2811_util::convert_color_to_buffer;
 
 
 use stm32f1xx_hal::{
     spi::{Mode, Phase, Polarity, Spi},
 };
 
-
-
-#[repr(C, packed)]
-#[derive(Default, Copy, Clone)]
-/// Struct to represent the RGB state of a single led.
-pub struct RGB {
-    pub r: u8,
-    pub g: u8,
-    pub b: u8,
-}
 
 
 
@@ -136,23 +128,6 @@ fn main() -> ! {
         phase: Phase::CaptureOnFirstTransition,
     };
     let spi = Spi::spi2(dp.SPI2, pins, spi_mode, 3.MHz(), clocks);
-    // From datasheet:
-    //            _______
-    // 0 code:   |T0H    |_T0L____|
-    //            _________
-    // 1 code:   |T1H      |_T1L__|
-    //
-    // ret:      |____Tret________|
-    //
-    // 3 MHz gives us 3.3333333333333335e-07 per bit, which is 0.3 us
-    // OctoWs2811 has;
-    // T0H: 0.3 us
-    // T1H: 0.75 us
-    // TH_TL: 1.25 us
-    // 1.25 / 0.3 = ~ 4.1 may be able to put two bits in a single SPI byte?
-    // Start with
-    // 0 bit represented by spi byte: 0b10000000
-    // 1 bit represented by spi byte: 0b11100000
 
     // Set up the DMA device
     let dma = dp.DMA1.split();
@@ -160,7 +135,11 @@ fn main() -> ! {
     // Connect the SPI device to the DMA
 
     // 
-    let buf = singleton!(: [[u8; 8]; 2] = [[0; 8]; 2]).unwrap();
+    let buf = singleton!(: [u8; 4 * 3 * 8] = [0; 4 * 3 * 8]).unwrap();
+    // let mut colors = [RGB::RED, RGB::GREEN, RGB::BLUE, RGB::WHITE];
+    let mut colors = [RGB::BLACK, RGB::RED, RGB::GREEN, RGB::BLUE];
+    let _  = colors.iter_mut().map(|x| x.limit(1)).collect::<()>();
+    convert_color_to_buffer(&colors, &mut buf[..]);
 
     let spi_dma = spi.with_tx_dma(dma.5);
     // let mut circ_buffer = spi_dma.write(buf);
