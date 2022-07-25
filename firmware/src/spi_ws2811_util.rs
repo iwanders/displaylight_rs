@@ -59,9 +59,7 @@ pub fn convert_color_to_buffer(colors: &[RGB], buffer: &mut [u8]) {
     }
 }
 
-// impl<SPI, REMAP, PINS, FrameSize> SpiReadWrite<FrameSize> for Spi<SPI, REMAP, PINS, FrameSize>
-// where
-    // SPI: Instance,
+
 use stm32f1xx_hal::spi::Spi2NoRemap;
 use stm32f1xx_hal::spi::NoSck;use stm32f1xx_hal::spi::NoMiso;
 use stm32f1xx_hal::gpio::Alternate;
@@ -69,17 +67,19 @@ use stm32f1xx_hal::gpio::PushPull;
 use stm32f1xx_hal::gpio::CRH;
 use stm32f1xx_hal::dma::TxDma;
 use stm32f1xx_hal::dma::Transfer;
+use cortex_m::singleton;
 
+// This is all pretty bad and hardcoded, but at least all the logic around the ws2811 driving is
+// in one place. Complete with flip-flopping between having the data available for updating and
+// performing the SPI transaction.
 
-use stm32f1xx_hal::prelude::*; //, timer::Timer
+use stm32f1xx_hal::prelude::*; 
 type DmaType = stm32f1xx_hal::dma::dma1::C5;
 type SpiPort = stm32f1xx_hal::pac::SPI2;
 type SpiPins = (NoSck, NoMiso, stm32f1xx_hal::gpio::Pin<Alternate<PushPull>, CRH, 'B', 15_u8>);
-// type SpiType = Spi<stm32f1xx_hal::pac::SPI2, Spi2NoRemap, SpiPins, u8>;
 type SpiDma = TxDma<Spi<SpiPort, Spi2NoRemap, SpiPins, u8>, DmaType>;
 type TransferType = Transfer<stm32f1xx_hal::dma::R, &'static mut [u8], SpiDma>;
 
-// impl<REMAP, PINS> Spi<pac::SPI2, REMAP, PINS, u8> 
 type StaticBuffer = &'static mut [u8];
 struct Pending {
     spi_dma: SpiDma,
@@ -92,46 +92,76 @@ impl Pending {
 }
 
 pub struct Ws2811SpiDmaDriver {
-    // spi: SpiType,
-    // dma: DmaType,
     pending: Option<Pending>,
     transfer: Option<TransferType>,
-    // transfer: Option<T>,
 }
 
-impl Ws2811SpiDmaDriver {
-    pub fn new(spi: stm32f1xx_hal::pac::SPI2, pins: SpiPins, clocks: stm32f1xx_hal::rcc::Clocks, dma: DmaType, buffer: &'static mut [u8]) -> Self {
 
+impl Ws2811SpiDmaDriver {
+
+    const PREAMBLE_COUNT: usize = 1; // just to ensur we have some zeros.
+    const POST_COUNT: usize = 7; // 25 usec... at 6 Mhz, that is 150 clocks, that's 18.75 bytes. Lets say 21, so 7 pixels.
+    const BYTES_PER_LED: usize = 3 * 8;
+
+    pub const fn calculate_buffer_size(led_count: usize) -> usize {
+        (led_count + Self::PREAMBLE_COUNT + Self::POST_COUNT)* Self::BYTES_PER_LED
+    }
+
+    pub fn new(spi: stm32f1xx_hal::pac::SPI2, pins: SpiPins, clocks: stm32f1xx_hal::rcc::Clocks, dma: DmaType, buffer: &'static mut [u8]) -> Self {
         let spi_mode = Mode {
             polarity: Polarity::IdleLow,
             phase: Phase::CaptureOnFirstTransition,
         };
         let spi = Spi::spi2(spi, pins, spi_mode, 6.MHz(), clocks);
         let spi_dma = spi.with_tx_dma(dma);
-        // spi_dma + 3;
-        
-        // let dma = bus.with_tx_dma(dma.5);
-        // stm32f1xx_hal::dma::Transfer
+
         let pending = Some(Pending{spi_dma, buffer});
         Ws2811SpiDmaDriver{pending, transfer: None}
     }
 
     pub fn start_update(&mut self) {
+        self.finalize_transfer();
         if let Some(pending) = self.pending.take() {
             let (spi_dma, buffer) = pending.split();
             let transfer = spi_dma.write(buffer);
             self.transfer = Some(transfer);
         }
     }
+
+    pub fn is_done(&self) -> bool {
+        !self.is_transfering()
+    }
+
+    pub fn is_transfering(&self) -> bool {
+        if let Some(transfer) = &self.transfer {
+            return !transfer.is_done();
+        }
+        false
+    }
+
+    pub fn finalize_transfer(&mut self) {
+        if self.is_transfering() {
+            return;
+        }
+        if let Some(transfer) = self.transfer.take() {
+            let (buffer, spi_dma) = transfer.wait();
+            let pending = Some(Pending{spi_dma, buffer});
+            self.pending = pending;
+        }
+    }
+
+    pub fn prepare(&mut self, colors: &[RGB]) {
+        if let Some(pending) = &mut self.pending {
+            convert_color_to_buffer(
+                colors,
+                &mut pending.buffer[(Self::BYTES_PER_LED * Self::PREAMBLE_COUNT)..((colors.len() + Self::PREAMBLE_COUNT) *Self::BYTES_PER_LED)],
+            );
+        }
+    }
 }
 
-// impl<SPI, REMAP, PINS, FrameSize> SpiReadWrite<FrameSize> for Spi<SPI, REMAP, PINS, FrameSize>
-// where
-    // SPI: Instance,
-    // FrameSize: Copy,
-// {
 
-// Nope... :(
+// Using a denser (6Mhz but with 2 bits per byte) doesn't work unfortunately;
 pub mod dense {
     use super::*;
     const WS2811_0BIT: u8 = 0b1000;

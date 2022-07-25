@@ -124,14 +124,13 @@ fn main() -> ! {
     // Connect the SPI device to the DMA
 
     const LEDS: usize = 226;
+    const BUFFER_SIZE: usize = spi_ws2811_util::Ws2811SpiDmaDriver::calculate_buffer_size(LEDS);
     // let mut colors = [RGB::RED, RGB::GREEN, RGB::BLUE, RGB::WHITE];
     // let buf: [u8; (leds + 1) * 3 * 8] = [0; (leds+ 1) * 3 * 8];
     //
 
-    const PREAMBLE_COUNT: usize = 1;
-    const POST_COUNT: usize = 7; // 25 usec... at 6 Mhz, that is 150 clocks, that's 18.75 bytes. Lets say 21, so 7 pixels.
 
-    let buf = singleton!(: [u8; (LEDS + PREAMBLE_COUNT + POST_COUNT)* 3 * 8] = [0; (LEDS + PREAMBLE_COUNT + POST_COUNT)* 3 * 8]).unwrap();
+    let buf = singleton!(: [u8; BUFFER_SIZE] = [0; BUFFER_SIZE]).unwrap();
     let mut colors: [RGB; LEDS] = [RGB::BLACK; LEDS];
     for i in 0..LEDS {
         let v = i % 4;
@@ -148,15 +147,13 @@ fn main() -> ! {
     // let mut colors = [RGB::BLACK, RGB::BLACK, RGB::BLACK, RGB::BLACK];
     // let mut colors = [RGB::BLACK, RGB::RED, RGB::GREEN, RGB::BLUE];
     let _ = colors.iter_mut().map(|x| x.limit(1)).collect::<()>();
-    spi_ws2811_util::convert_color_to_buffer(
-        &colors,
-        &mut buf[(3 * 8 * PREAMBLE_COUNT)..((LEDS + PREAMBLE_COUNT) * 3 * 8)],
-    );
+
     // spi_ws2811_util::dense::convert_color_to_buffer(&colors, &mut buf[..]);
 
     // let spi_dma = spi.with_tx_dma(dma.5);
 
     let mut ws2811 = spi_ws2811_util::Ws2811SpiDmaDriver::new(dp.SPI2, pins, clocks, dma.5, &mut buf[..]);
+    ws2811.prepare(&colors);
     ws2811.start_update();
 
     // Start a DMA transfer
@@ -202,6 +199,9 @@ fn main() -> ! {
             current.ticks().wrapping_sub(old.ticks()),
         );
 
+        if ws2811.is_done() {
+            ws2811.start_update();
+        }
         // if transfer.is_done() {
             // delay.delay_ms(2u16); // need some delay here to make the 150 us low.
             // sprintln!("done {}, going into wait", my_timer.now());
