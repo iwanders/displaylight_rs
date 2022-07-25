@@ -209,16 +209,16 @@ fn main() -> ! {
 
         if transfer.is_done() {
             // delay.delay_ms(2u16); // need some delay here to make the 150 us low.
-            // sprintln!("done {}, going into wait", my_timer.now());
+            sprintln!("done {}, going into wait", my_timer.now());
             // s.service();
 
             let (buf, spi_dma) = transfer.wait();
-            // sprintln!("starting {} w", my_timer.now());
+            sprintln!("starting {} w", my_timer.now());
             // s.service();
 
             transfer = spi_dma.write(buf);
 
-            // sprintln!("exiting write {}", my_timer.now());
+            sprintln!("exiting write {}", my_timer.now());
             // s.service();
         }
         // It's taking 16ms :< -> 8ms now, that should be sufficient... 125Hz update rate.

@@ -91,14 +91,17 @@ impl Serial {
         Serial {}
     }
 
-    pub fn write(&mut self, data: &[u8]) {
+    pub fn write(&mut self, data: &[u8]) -> usize {
         let writer = unsafe { BUFFER_TO_HOST_WRITER.as_mut().unwrap() };
-        for v in data {
-            let r = writer.write_value(*v);
-            if r.is_err() {
+        let mut count = 0usize;
+        for v in data.iter() {
+            if let Ok(_) = writer.write_value(*v) {
+                count += 1
+            } else {
                 break;
             }
         }
+        return count;
     }
 
     pub fn service(&mut self) {
@@ -135,9 +138,14 @@ use core::fmt::Error;
 // Implement the Write trait for the serial port.
 impl core::fmt::Write for Serial {
     fn write_str(&mut self, s: &str) -> Result<(), Error> {
-        let b = s.as_bytes();
-        for i in 0..b.len() {
-            self.write(&[b[i]]);
+        let mut b = s.as_bytes();
+        while !b.is_empty() {
+            let written = self.write(b);
+            b = &b[written..];
+            // Emergency service.
+            if !b.is_empty() {
+                self.service();
+            }
         }
         Ok(())
     }
