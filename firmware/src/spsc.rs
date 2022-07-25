@@ -61,6 +61,11 @@ impl<T, const N: usize> SpScRingbuffer<T, N> {
         unsafe { self.read_value_unsafe() }
     }
 
+    /// Peek at the next readable value, without advancing the write position.
+    pub fn peek_value(&self) -> Option<&T> {
+        unsafe { self.peek_value_unsafe() }
+    }
+
     // Private worker functiont that can use interior mutability to allow reading values on a const
     // version of self without having to do const casts.
     unsafe fn read_value_unsafe(&self) -> Option<T> {
@@ -77,6 +82,23 @@ impl<T, const N: usize> SpScRingbuffer<T, N> {
 
         // Update the new read position.
         self.read_pos.store((r_pos + 1) % N, Ordering::Release);
+        Some(v)
+    }
+
+    // Private worker functiont that can use interior mutability to allow reading values on a const
+    // version of self without having to do const casts.
+    unsafe fn peek_value_unsafe(&self) -> Option<&T> {
+        // check if there's something to return
+        if self.is_empty() {
+            return None;
+        }
+        // Get the read position.
+        let r_pos = self.read_pos.load(Ordering::Relaxed);
+
+        // Get a reference to the value.
+        let v = self.array[r_pos].get().as_ref().unwrap().assume_init_ref();
+
+        // Return it.
         Some(v)
     }
 
@@ -125,6 +147,10 @@ impl<'a, T, const N: usize> Writer<'a, T, { N }> {
     pub fn write_value(&mut self, value: T) -> Result<(), WriteOverrun> {
         unsafe { self.buffer.write_value_unsafe(value) }
     }
+
+    pub fn is_full(&self) -> bool {
+        self.buffer.is_full()
+    }
 }
 
 pub struct Reader<'a, T, const N: usize> {
@@ -143,6 +169,12 @@ impl<'a, T, const N: usize> Reader<'a, T, { N }> {
     pub fn read_value(&mut self) -> Option<T> {
         unsafe { self.buffer.read_value_unsafe() }
     }
+
+    pub fn peek_value(&mut self) -> Option<&T> {
+        unsafe { self.buffer.peek_value_unsafe() }
+    }
+
+
 }
 
 #[cfg(test)]
@@ -173,6 +205,8 @@ mod tests {
         assert_eq!(z.write_value(5).is_ok(), false); // would make read==write
 
         assert_eq!(z.is_full(), true);
+        assert_eq!(unsafe{z.peek_value_unsafe().is_some()}, true);
+        assert_eq!(unsafe{*(z.peek_value_unsafe().unwrap())}, 2);
         assert_eq!(z.read_value().expect("2"), 2);
         assert_eq!(z.read_value().expect("3"), 3);
         assert_eq!(z.read_value().expect("4"), 4);

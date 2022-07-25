@@ -180,13 +180,21 @@ fn write_from_buffer() {
     cortex_m::interrupt::free(|cs| {
         let mut serial_borrow = unsafe { USB_SERIAL.borrow(cs).borrow_mut() };
         let serial = serial_borrow.as_mut().unwrap();
-        // let usb_dev = unsafe { USB_DEVICE.as_mut().unwrap() };
         let z = unsafe { BUFFER_TO_HOST_READER.as_mut().unwrap() };
         while !z.is_empty() {
-            if let Ok(_v) = serial.write(&[z.read_value().unwrap()]) {
+            let peeked = z.peek_value().unwrap();
+            if let Ok(_v) = serial.write(&[*peeked]) {
+                // ok, we could read it, now actually consume it.
+                z.read_value().unwrap();
             } else {
-                // overflow here... what to do? Drop bytes sounds nice...
+                // we can't write anymore... yikes, lets service the serial port.
+                // usb_interrupt();
+                // No, we want to drop these bytes as they are mcu -> PC...
+                // if we were to block here to service them, the mcu would stall if nothing on the
+                // pc is consuming the bytes? Do we need some fancy logic?
+                break;
             }
+            
         }
     });
 }
@@ -198,8 +206,21 @@ fn read_to_buffer() {
         // let usb_dev = unsafe { USB_DEVICE.as_mut().unwrap() };
         let writer = unsafe { BUFFER_FROM_HOST_WRITER.as_mut().unwrap() };
 
-        let mut buf = [0u8; 64];
+        // Data coming from the PC... we really don't want to lose this.
+        while !writer.is_full() {
+            let mut buf = [0u8; 1];
+            match serial.read(&mut buf) {
+                Ok(count) if count > 0 => {
+                    for i in 0..count {
+                        let _res = writer.write_value(buf[i]);
+                    }
+                }
+                _ => { break; }
+            }
+        }
 
+        /*
+        let mut buf = [0u8; 64];
         match serial.read(&mut buf) {
             Ok(count) if count > 0 => {
                 for i in 0..count {
@@ -211,6 +232,7 @@ fn read_to_buffer() {
             }
             _ => {}
         }
+        */
     });
 }
 
