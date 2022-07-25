@@ -200,15 +200,15 @@ fn main() -> ! {
 
 
         if transfer.is_done() {
-            let mut d: string::StackString = Default::default();
-            core::fmt::write(&mut d, format_args!("done {}, going into wait\n", my_timer.now())).expect("");
-            s.write(d.data());
+            // let mut d: string::StackString = Default::default();
+            core::fmt::write(&mut s, format_args!("done {}, going into wait\n", my_timer.now())).expect("");
+            // s.write(d.data());
             s.service();
 
             let (buf, spi_dma) = transfer.wait();
-            let mut d: string::StackString = Default::default();
-            core::fmt::write(&mut d, format_args!("starting {} w\n", my_timer.now())).expect("");
-            s.write(d.data());
+            // let mut d: string::StackString = Default::default();
+            core::fmt::write(&mut s, format_args!("starting {} w\n", my_timer.now())).expect("");
+            // s.write(d.data());
             s.service();
 
 
@@ -216,12 +216,12 @@ fn main() -> ! {
 
             transfer = spi_dma.write(buf);
 
-            let mut d: string::StackString = Default::default();
-            core::fmt::write(&mut d, format_args!("exiting write {}\n", my_timer.now())).expect("");
-            s.write(d.data());
+            // let mut d: string::StackString = Default::default();
+            core::fmt::write(&mut s, format_args!("exiting write {}\n", my_timer.now())).expect("");
+            // s.write(d.data());
             s.service();
         }
-        // It's taking 16ms :<
+        // It's taking 16ms :< -> 8ms now, that should be sufficient... 125Hz update rate.
 
 
 

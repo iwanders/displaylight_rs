@@ -128,6 +128,23 @@ impl Serial {
     }
 }
 
+use core::cmp::min;
+use core::fmt::Error;
+// Implement the Write trait for the serial port.
+impl core::fmt::Write for Serial {
+    fn write_str(&mut self, s: &str) -> Result<(), Error> {
+        let b = s.as_bytes();
+        for i in 0..b.len() {
+            self.write(&[b[i]]);
+        }
+        Ok(())
+    }
+    // fn write_char(&mut self, c: char) -> Result { ... }
+    // fn write_fmt(&mut self, args: Arguments<'_>) -> Result { ... }
+}
+
+
+
 #[interrupt]
 fn USB_HP_CAN_TX() {
     usb_interrupt();
