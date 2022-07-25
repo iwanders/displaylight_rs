@@ -46,15 +46,3 @@ impl core::fmt::Write for StackString {
     // fn write_char(&mut self, c: char) -> Result { ... }
     // fn write_fmt(&mut self, args: Arguments<'_>) -> Result { ... }
 }
-
-pub use core::fmt;
-/// Provide a println! macro similar to Rust does.
-#[macro_export]
-macro_rules! println {
-    () => ($crate::io::print("\n"));
-    ($($arg:tt)*) => ({
-        let mut v: $crate::io::StackString = Default::default();
-        core::fmt::write(&mut v, format_args!($($arg)*)).expect("Error occurred while trying to write in String");
-        v.write_str("\n").expect("Shouldn't fail");
-    })
-}

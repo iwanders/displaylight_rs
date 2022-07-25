@@ -48,7 +48,10 @@ static mut USB_DEVICE: Option<UsbDevice<UsbBusType>> = None;
 pub struct Serial {}
 
 impl Serial {
-    pub fn new(usb: Peripheral) -> Self {
+    pub fn new() -> Self {
+        Serial {}
+    }
+    pub fn init(usb: Peripheral) -> Self {
         // Unsafe to allow access to static variables
         unsafe {
             let bus = UsbBus::new(usb);
@@ -128,7 +131,6 @@ impl Serial {
     }
 }
 
-use core::cmp::min;
 use core::fmt::Error;
 // Implement the Write trait for the serial port.
 impl core::fmt::Write for Serial {
@@ -143,7 +145,18 @@ impl core::fmt::Write for Serial {
     // fn write_fmt(&mut self, args: Arguments<'_>) -> Result { ... }
 }
 
-
+/// Provide a println! macro similar to Rust does.
+#[macro_export]
+macro_rules! sprintln {
+    () => ($crate::io::print("\n"));
+    ($($arg:tt)*) => ({
+        use core::fmt::Write;
+        use core::fmt;
+        let mut v = displaylight_fw::serial::Serial::new();
+        core::fmt::write(&mut v, format_args!($($arg)*)).expect("Error occurred while trying to write in String");
+        v.write_str("\n").expect("Shouldn't fail");
+    })
+}
 
 #[interrupt]
 fn USB_HP_CAN_TX() {

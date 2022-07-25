@@ -38,6 +38,8 @@ use displaylight_fw::serial;
 use displaylight_fw::spi_ws2811_util;
 use displaylight_fw::string;
 use displaylight_fw::types::RGB;
+// #[macro_use]
+use displaylight_fw::sprintln;
 
 use stm32f1xx_hal::spi::{Mode, Phase, Polarity, Spi};
 
@@ -101,7 +103,7 @@ fn main() -> ! {
         pin_dp: usb_dp,
     };
 
-    let mut s = serial::Serial::new(usb);
+    let mut s = serial::Serial::init(usb);
 
     // https://github.com/stm32-rs/stm32f1xx-hal/blob/f9b24f4d9bac7fc3c93764bd295125800944f53b/examples/spi-dma.rs
     // https://github.com/stm32-rs/stm32f1xx-hal/blob/f9b24f4d9bac7fc3c93764bd295125800944f53b/examples/adc-dma-circ.rs
@@ -129,13 +131,17 @@ fn main() -> ! {
 
     // Connect the SPI device to the DMA
 
-    const leds: usize = 226;
+    const LEDS: usize = 226;
     // let mut colors = [RGB::RED, RGB::GREEN, RGB::BLUE, RGB::WHITE];
     // let buf: [u8; (leds + 1) * 3 * 8] = [0; (leds+ 1) * 3 * 8];
     //
-    let buf = singleton!(: [u8; (leds + 1)* 3 * 8] = [0; (leds + 1)* 3 * 8]).unwrap();
-    let mut colors: [RGB; leds] = [RGB::BLACK; leds];
-    for i in 0..leds {
+
+    const PREAMBLE_COUNT: usize = 1;
+    const POST_COUNT: usize = 7; // 25 usec... at 6 Mhz, that is 150 clocks, that's 18.75 bytes. Lets say 21, so 7 pixels.
+
+    let buf = singleton!(: [u8; (LEDS + PREAMBLE_COUNT + POST_COUNT)* 3 * 8] = [0; (LEDS + PREAMBLE_COUNT + POST_COUNT)* 3 * 8]).unwrap();
+    let mut colors: [RGB; LEDS] = [RGB::BLACK; LEDS];
+    for i in 0..LEDS {
         let v = i % 4;
         if v == 0 {
             colors[i] = RGB::RED;
@@ -150,7 +156,7 @@ fn main() -> ! {
     // let mut colors = [RGB::BLACK, RGB::BLACK, RGB::BLACK, RGB::BLACK];
     // let mut colors = [RGB::BLACK, RGB::RED, RGB::GREEN, RGB::BLUE];
     let _ = colors.iter_mut().map(|x| x.limit(1)).collect::<()>();
-    spi_ws2811_util::convert_color_to_buffer(&colors, &mut buf[(3 * 8)..]);
+    spi_ws2811_util::convert_color_to_buffer(&colors, &mut buf[(3 * 8 * PREAMBLE_COUNT)..((LEDS + PREAMBLE_COUNT)* 3 * 8)]);
     // spi_ws2811_util::dense::convert_color_to_buffer(&colors, &mut buf[..]);
 
     let spi_dma = spi.with_tx_dma(dma.5);
@@ -181,7 +187,6 @@ fn main() -> ! {
 
     let mut delay = dp.TIM3.delay_us(&clocks);
 
-
     let mut v = 0usize;
     let mut led_state: bool = false;
     loop {
@@ -193,37 +198,28 @@ fn main() -> ! {
         s.service();
         // wfi();
         // if v % 100000 != 0 {
-            // continue;
+        // continue;
         // }
         let current = my_timer.now();
-        let diff = stm32f1xx_hal::time::MilliSeconds::from_ticks(current.ticks().wrapping_sub(old.ticks()));
-
+        let diff = stm32f1xx_hal::time::MilliSeconds::from_ticks(
+            current.ticks().wrapping_sub(old.ticks()),
+        );
 
         if transfer.is_done() {
-            // let mut d: string::StackString = Default::default();
-            core::fmt::write(&mut s, format_args!("done {}, going into wait\n", my_timer.now())).expect("");
-            // s.write(d.data());
-            s.service();
+            // delay.delay_ms(2u16); // need some delay here to make the 150 us low.
+            // sprintln!("done {}, going into wait", my_timer.now());
+            // s.service();
 
             let (buf, spi_dma) = transfer.wait();
-            // let mut d: string::StackString = Default::default();
-            core::fmt::write(&mut s, format_args!("starting {} w\n", my_timer.now())).expect("");
-            // s.write(d.data());
-            s.service();
-
-
-
+            // sprintln!("starting {} w", my_timer.now());
+            // s.service();
 
             transfer = spi_dma.write(buf);
 
-            // let mut d: string::StackString = Default::default();
-            core::fmt::write(&mut s, format_args!("exiting write {}\n", my_timer.now())).expect("");
-            // s.write(d.data());
-            s.service();
+            // sprintln!("exiting write {}", my_timer.now());
+            // s.service();
         }
         // It's taking 16ms :< -> 8ms now, that should be sufficient... 125Hz update rate.
-
-
 
         if diff > stm32f1xx_hal::time::ms(1000) {
             // my_timer.reset()
@@ -233,8 +229,6 @@ fn main() -> ! {
             continue;
         }
 
-        // let z = format!("{}", v);
-        let mut d: string::StackString = Default::default();
 
         if led_state {
             led.set_low();
@@ -247,8 +241,7 @@ fn main() -> ! {
         delay.delay_ms(10u16);
         let toc = my_timer.now();
 
-        core::fmt::write(&mut d, format_args!("{} {}, {}\n", v, tic, toc)).expect("");
-        s.write(d.data());
+        sprintln!("{} {}, {}\n", v, tic, toc);
 
         while s.available() {
             if let Some(v) = s.read() {
