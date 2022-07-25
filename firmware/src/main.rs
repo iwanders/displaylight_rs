@@ -156,7 +156,10 @@ fn main() -> ! {
     // let mut colors = [RGB::BLACK, RGB::BLACK, RGB::BLACK, RGB::BLACK];
     // let mut colors = [RGB::BLACK, RGB::RED, RGB::GREEN, RGB::BLUE];
     let _ = colors.iter_mut().map(|x| x.limit(1)).collect::<()>();
-    spi_ws2811_util::convert_color_to_buffer(&colors, &mut buf[(3 * 8 * PREAMBLE_COUNT)..((LEDS + PREAMBLE_COUNT)* 3 * 8)]);
+    spi_ws2811_util::convert_color_to_buffer(
+        &colors,
+        &mut buf[(3 * 8 * PREAMBLE_COUNT)..((LEDS + PREAMBLE_COUNT) * 3 * 8)],
+    );
     // spi_ws2811_util::dense::convert_color_to_buffer(&colors, &mut buf[..]);
 
     let spi_dma = spi.with_tx_dma(dma.5);
@@ -228,7 +231,6 @@ fn main() -> ! {
         } else {
             continue;
         }
-
 
         if led_state {
             led.set_low();
