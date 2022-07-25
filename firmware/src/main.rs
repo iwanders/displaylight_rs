@@ -169,8 +169,11 @@ fn main() -> ! {
     // my_timer.start(1<<32);
     // my_timer.start(100.millis()).unwrap();
     // counters are 16 bit, sob
-    let mut my_timer = dp.TIM2.counter_us(&clocks);
-    my_timer.start(60.millis()).unwrap();
+    // counter_ms: Can wait from 2 ms to 65 sec for 16-bit timer
+    // counter_us: Can wait from 2 μs to 65 ms for 16-bit timer
+    let mut my_timer = dp.TIM2.counter_ms(&clocks);
+    my_timer.start(60.secs()).unwrap();
+    let mut old = my_timer.now();
 
     // let mut my_timer = _cp.SYST.counter_us(&clocks);
     // my_timer.start(30_000.millis()).unwrap();
@@ -188,7 +191,17 @@ fn main() -> ! {
         }
         s.service();
         // wfi();
-        if v % 100000 != 0 {
+        // if v % 100000 != 0 {
+            // continue;
+        // }
+        let current = my_timer.now();
+        let diff = current - old;
+        // diff+1;
+        if diff > stm32f1xx_hal::time::ms(1000) {
+            // my_timer.reset()
+            // dp.TIM2.reset();
+            old = current;
+        } else {
             continue;
         }
 
