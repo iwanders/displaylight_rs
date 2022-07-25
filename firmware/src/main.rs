@@ -36,7 +36,6 @@ use stm32f1xx_hal::usb::Peripheral;
 use displaylight_fw::serial;
 // use displaylight_fw::spsc;
 use displaylight_fw::spi_ws2811_util;
-use displaylight_fw::string;
 use displaylight_fw::types::RGB;
 // #[macro_use]
 use displaylight_fw::sprintln;
