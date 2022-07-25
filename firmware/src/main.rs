@@ -118,13 +118,6 @@ fn main() -> ! {
         stm32f1xx_hal::spi::NoMiso,
         gpiob.pb15.into_alternate_push_pull(&mut gpiob.crh),
     );
-
-    let spi_mode = Mode {
-        polarity: Polarity::IdleLow,
-        phase: Phase::CaptureOnFirstTransition,
-    };
-    let spi = Spi::spi2(dp.SPI2, pins, spi_mode, 6.MHz(), clocks);
-
     // Set up the DMA device
     let dma = dp.DMA1.split();
 
@@ -161,11 +154,13 @@ fn main() -> ! {
     );
     // spi_ws2811_util::dense::convert_color_to_buffer(&colors, &mut buf[..]);
 
-    let spi_dma = spi.with_tx_dma(dma.5);
-    // let mut circ_buffer = spi_dma.write(buf);
+    // let spi_dma = spi.with_tx_dma(dma.5);
+
+    let mut ws2811 = spi_ws2811_util::Ws2811SpiDmaDriver::new(dp.SPI2, pins, clocks, dma.5, &mut buf[..]);
+    ws2811.start_update();
 
     // Start a DMA transfer
-    let mut transfer = spi_dma.write(buf);
+    // let mut transfer = spi_dma.write(buf);
     // - spi
 
     // Wait for it to finnish. The transfer takes ownership over the SPI device
@@ -207,20 +202,20 @@ fn main() -> ! {
             current.ticks().wrapping_sub(old.ticks()),
         );
 
-        if transfer.is_done() {
+        // if transfer.is_done() {
             // delay.delay_ms(2u16); // need some delay here to make the 150 us low.
-            sprintln!("done {}, going into wait", my_timer.now());
+            // sprintln!("done {}, going into wait", my_timer.now());
             // s.service();
 
-            let (buf, spi_dma) = transfer.wait();
-            sprintln!("starting {} w", my_timer.now());
+            // let (buf, spi_dma) = transfer.wait();
+            // sprintln!("starting {} w", my_timer.now());
             // s.service();
 
-            transfer = spi_dma.write(buf);
+            // transfer = spi_dma.write(buf);
 
-            sprintln!("exiting write {}", my_timer.now());
+            // sprintln!("exiting write {}", my_timer.now());
             // s.service();
-        }
+        // }
         // It's taking 16ms :< -> 8ms now, that should be sufficient... 125Hz update rate.
 
         if diff > stm32f1xx_hal::time::ms(1000) {
