@@ -195,7 +195,7 @@ fn main() -> ! {
             // continue;
         // }
         let current = my_timer.now();
-        let diff = current - old;
+        let diff = stm32f1xx_hal::time::MilliSeconds::from_ticks(current.ticks().wrapping_sub(old.ticks()));
         // diff+1;
         if diff > stm32f1xx_hal::time::ms(1000) {
             // my_timer.reset()
