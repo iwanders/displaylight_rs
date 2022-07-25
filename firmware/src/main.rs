@@ -181,6 +181,7 @@ fn main() -> ! {
 
     let mut delay = dp.TIM3.delay_us(&clocks);
 
+
     let mut v = 0usize;
     let mut led_state: bool = false;
     loop {
@@ -196,21 +197,39 @@ fn main() -> ! {
         // }
         let current = my_timer.now();
         let diff = stm32f1xx_hal::time::MilliSeconds::from_ticks(current.ticks().wrapping_sub(old.ticks()));
-        // diff+1;
+
+
+        if transfer.is_done() {
+            let mut d: string::StackString = Default::default();
+            core::fmt::write(&mut d, format_args!("done {}, going into wait\n", my_timer.now())).expect("");
+            s.write(d.data());
+            s.service();
+
+            let (buf, spi_dma) = transfer.wait();
+            let mut d: string::StackString = Default::default();
+            core::fmt::write(&mut d, format_args!("starting {} w\n", my_timer.now())).expect("");
+            s.write(d.data());
+            s.service();
+
+
+
+
+            transfer = spi_dma.write(buf);
+
+            let mut d: string::StackString = Default::default();
+            core::fmt::write(&mut d, format_args!("exiting write {}\n", my_timer.now())).expect("");
+            s.write(d.data());
+            s.service();
+        }
+
+
+
         if diff > stm32f1xx_hal::time::ms(1000) {
             // my_timer.reset()
             // dp.TIM2.reset();
             old = current;
         } else {
             continue;
-        }
-
-        if transfer.is_done() {
-            let (buf, spi_dma) = transfer.wait();
-            transfer = spi_dma.write(buf);
-            let mut d: string::StackString = Default::default();
-            core::fmt::write(&mut d, format_args!("new transfer\n")).expect("");
-            s.write(d.data());
         }
 
         // let z = format!("{}", v);
