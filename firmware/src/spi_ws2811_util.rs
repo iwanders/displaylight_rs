@@ -38,8 +38,9 @@ on the expanded data...
 */
 
 // Hardcode on 3Mhz spi bus for now.
-const WS2811_0BIT: u8 = 0b10000000;
-const WS2811_1BIT: u8 = 0b11100000;
+// Changed to 6Mhz because... faster is better.
+const WS2811_0BIT: u8 = 0b11000000;
+const WS2811_1BIT: u8 = 0b11111100;
 
 pub fn convert_color_to_buffer(colors: &[RGB], buffer: &mut [u8]) {
     assert_eq!(colors.len() * 3 * 8, buffer.len());

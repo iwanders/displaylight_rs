@@ -122,7 +122,7 @@ fn main() -> ! {
         polarity: Polarity::IdleLow,
         phase: Phase::CaptureOnFirstTransition,
     };
-    let spi = Spi::spi2(dp.SPI2, pins, spi_mode, 3.MHz(), clocks);
+    let spi = Spi::spi2(dp.SPI2, pins, spi_mode, 6.MHz(), clocks);
 
     // Set up the DMA device
     let dma = dp.DMA1.split();
@@ -221,6 +221,7 @@ fn main() -> ! {
             s.write(d.data());
             s.service();
         }
+        // It's taking 16ms :<
 
 
 
