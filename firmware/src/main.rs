@@ -42,9 +42,9 @@ use cortex_m::singleton;
 static mut G_V: usize = 0;
 
 
-fn set_rgbw(leds: &mut [RGB]) {
+fn set_rgbw(leds: &mut [RGB], offset: usize) {
     for i in 0..leds.len() {
-        let v = i % 4;
+        let v = (i + offset) % 4;
         if v == 0 {
             leds[i] = RGB::RED;
         } else if v == 1 {
@@ -151,7 +151,7 @@ fn main() -> ! {
 
     let buf = singleton!(: [u8; BUFFER_SIZE] = [0; BUFFER_SIZE]).unwrap();
     let mut colors: [RGB; LEDS] = [RGB::BLACK; LEDS];
-    set_rgbw(&mut colors[..]);
+    set_rgbw(&mut colors[..], 0);
     set_limit(&mut colors[..], 1);
 
     let mut ws2811 =
@@ -228,9 +228,9 @@ fn main() -> ! {
         }
 
         if ws2811.is_ready() {
-            set_rgbw(&mut colors);
+            set_rgbw(&mut colors, 2);
             let cu8 = (c % 255) as u8;
-            // set_color(&mut colors, &RGB{r: cu8, g: 0, b: 0});
+            // set_color(&mut colors, &RGB{r: 0, g: 0, b: cu8});
             // let v = current.ticks();
             c += 1;
             sprintln!("{}  {} \n", c, c % 255);
