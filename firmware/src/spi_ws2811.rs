@@ -137,7 +137,6 @@ impl Ws2811SpiDmaDriver {
         }
     }
 
-
     fn is_transfer_complete(&self) -> bool {
         if let Some(transfer) = &self.transfer {
             return transfer.is_done();

@@ -31,6 +31,7 @@ use stm32f1xx_hal::pac::{self}; // , interrupt, Interrupt, NVIC
                                 // use stm32f1xx_hal::prelude::*;
 use stm32f1xx_hal::usb::Peripheral;
 
+use displaylight_fw::gamma;
 use displaylight_fw::serial;
 use displaylight_fw::spi_ws2811;
 use displaylight_fw::types::RGB;
@@ -40,7 +41,6 @@ use displaylight_fw::sprintln;
 use cortex_m::singleton;
 
 static mut G_V: usize = 0;
-
 
 fn set_rgbw(leds: &mut [RGB], offset: usize) {
     for i in 0..leds.len() {
@@ -159,6 +159,9 @@ fn main() -> ! {
     ws2811.prepare(&colors);
     ws2811.update();
 
+    let filter = gamma::Gamma::correction();
+    // let filter = gamma::Gamma::linear();
+
     // Start a DMA transfer
     // let mut transfer = spi_dma.write(buf);
     // - spi
@@ -196,12 +199,10 @@ fn main() -> ! {
         }
         s.service();
 
-
         let current = my_timer.now();
         let diff = stm32f1xx_hal::time::MilliSeconds::from_ticks(
             current.ticks().wrapping_sub(old.ticks()),
         );
-
 
         // if transfer.is_done() {
         // delay.delay_ms(2u16); // need some delay here to make the 150 us low.
@@ -230,11 +231,14 @@ fn main() -> ! {
         if ws2811.is_ready() {
             set_rgbw(&mut colors, 2);
             let cu8 = (c % 255) as u8;
+            // set_color(&mut colors, &RGB{r: cu8, g: 0, b: 0});
+            // set_color(&mut colors, &RGB{r: 0, g: cu8, b: 0});
             // set_color(&mut colors, &RGB{r: 0, g: 0, b: cu8});
             // let v = current.ticks();
             c += 1;
             sprintln!("{}  {} \n", c, c % 255);
             set_limit(&mut colors, cu8);
+            filter.apply(&mut colors);
             ws2811.prepare(&colors);
             ws2811.update();
         }

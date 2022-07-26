@@ -214,7 +214,7 @@ fn read_to_buffer() {
                     for i in 0..count {
                         let _res = writer.write_value(buf[i]);
                     }
-                    if count == 0{
+                    if count == 0 {
                         break;
                     }
                 }
