@@ -192,9 +192,9 @@ fn write_from_buffer() {
                 // No, we want to drop these bytes as they are mcu -> PC...
                 // if we were to block here to service them, the mcu would stall if nothing on the
                 // pc is consuming the bytes? Do we need some fancy logic?
+                z.read_value().unwrap();
                 break;
             }
-            
         }
     });
 }
@@ -214,8 +214,13 @@ fn read_to_buffer() {
                     for i in 0..count {
                         let _res = writer.write_value(buf[i]);
                     }
+                    if count == 0{
+                        break;
+                    }
                 }
-                _ => { break; }
+                _ => {
+                    break;
+                }
             }
         }
 

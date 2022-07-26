@@ -173,8 +173,6 @@ impl<'a, T, const N: usize> Reader<'a, T, { N }> {
     pub fn peek_value(&mut self) -> Option<&T> {
         unsafe { self.buffer.peek_value_unsafe() }
     }
-
-
 }
 
 #[cfg(test)]
@@ -205,8 +203,8 @@ mod tests {
         assert_eq!(z.write_value(5).is_ok(), false); // would make read==write
 
         assert_eq!(z.is_full(), true);
-        assert_eq!(unsafe{z.peek_value_unsafe().is_some()}, true);
-        assert_eq!(unsafe{*(z.peek_value_unsafe().unwrap())}, 2);
+        assert_eq!(unsafe { z.peek_value_unsafe().is_some() }, true);
+        assert_eq!(unsafe { *(z.peek_value_unsafe().unwrap()) }, 2);
         assert_eq!(z.read_value().expect("2"), 2);
         assert_eq!(z.read_value().expect("3"), 3);
         assert_eq!(z.read_value().expect("4"), 4);

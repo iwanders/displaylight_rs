@@ -31,20 +31,43 @@ use stm32f1xx_hal::pac::{self}; // , interrupt, Interrupt, NVIC
                                 // use stm32f1xx_hal::prelude::*;
 use stm32f1xx_hal::usb::Peripheral;
 
-// use cortex_m_rt::entry;
-// use displaylight_fw::ringbuffer;
 use displaylight_fw::serial;
-// use displaylight_fw::spsc;
-use displaylight_fw::spi_ws2811_util;
+use displaylight_fw::spi_ws2811;
 use displaylight_fw::types::RGB;
-// #[macro_use]
-use displaylight_fw::sprintln;
 
-use stm32f1xx_hal::spi::{Mode, Phase, Polarity, Spi};
+use displaylight_fw::sprintln;
 
 use cortex_m::singleton;
 
 static mut G_V: usize = 0;
+
+
+fn set_rgbw(leds: &mut [RGB]) {
+    for i in 0..leds.len() {
+        let v = i % 4;
+        if v == 0 {
+            leds[i] = RGB::RED;
+        } else if v == 1 {
+            leds[i] = RGB::GREEN;
+        } else if v == 2 {
+            leds[i] = RGB::BLUE;
+        } else if v == 3 {
+            leds[i] = RGB::WHITE;
+        }
+    }
+}
+
+fn set_color(leds: &mut [RGB], color: &RGB) {
+    for v in leds.iter_mut() {
+        *v = *color;
+    }
+}
+
+fn set_limit(leds: &mut [RGB], value: u8) {
+    for v in leds.iter_mut() {
+        v.limit(value);
+    }
+}
 
 #[cfg_attr(not(test), entry)]
 fn main() -> ! {
@@ -124,37 +147,17 @@ fn main() -> ! {
     // Connect the SPI device to the DMA
 
     const LEDS: usize = 226;
-    const BUFFER_SIZE: usize = spi_ws2811_util::Ws2811SpiDmaDriver::calculate_buffer_size(LEDS);
-    // let mut colors = [RGB::RED, RGB::GREEN, RGB::BLUE, RGB::WHITE];
-    // let buf: [u8; (leds + 1) * 3 * 8] = [0; (leds+ 1) * 3 * 8];
-    //
-
+    const BUFFER_SIZE: usize = spi_ws2811::Ws2811SpiDmaDriver::calculate_buffer_size(LEDS);
 
     let buf = singleton!(: [u8; BUFFER_SIZE] = [0; BUFFER_SIZE]).unwrap();
     let mut colors: [RGB; LEDS] = [RGB::BLACK; LEDS];
-    for i in 0..LEDS {
-        let v = i % 4;
-        if v == 0 {
-            colors[i] = RGB::RED;
-        } else if v == 1 {
-            colors[i] = RGB::GREEN;
-        } else if v == 2 {
-            colors[i] = RGB::BLUE;
-        } else if v == 3 {
-            colors[i] = RGB::WHITE;
-        }
-    }
-    // let mut colors = [RGB::BLACK, RGB::BLACK, RGB::BLACK, RGB::BLACK];
-    // let mut colors = [RGB::BLACK, RGB::RED, RGB::GREEN, RGB::BLUE];
-    let _ = colors.iter_mut().map(|x| x.limit(1)).collect::<()>();
+    set_rgbw(&mut colors[..]);
+    set_limit(&mut colors[..], 1);
 
-    // spi_ws2811_util::dense::convert_color_to_buffer(&colors, &mut buf[..]);
-
-    // let spi_dma = spi.with_tx_dma(dma.5);
-
-    let mut ws2811 = spi_ws2811_util::Ws2811SpiDmaDriver::new(dp.SPI2, pins, clocks, dma.5, &mut buf[..]);
+    let mut ws2811 =
+        spi_ws2811::Ws2811SpiDmaDriver::new(dp.SPI2, pins, clocks, dma.5, &mut buf[..]);
     ws2811.prepare(&colors);
-    ws2811.start_update();
+    ws2811.update();
 
     // Start a DMA transfer
     // let mut transfer = spi_dma.write(buf);
@@ -180,9 +183,11 @@ fn main() -> ! {
     // let mut my_timer = stm32f1xx_hal::timer::FTimerUs::new(dp.TIM2, &clocks).counter_us();
 
     let mut delay = dp.TIM3.delay_us(&clocks);
+    delay.delay_ms(100u16);
 
     let mut v = 0usize;
     let mut led_state: bool = false;
+    let mut c = 0usize;
     loop {
         v += 1;
         unsafe {
@@ -190,35 +195,31 @@ fn main() -> ! {
             core::ptr::read_volatile(&G_V);
         }
         s.service();
-        // wfi();
-        // if v % 100000 != 0 {
-        // continue;
-        // }
+
+
         let current = my_timer.now();
         let diff = stm32f1xx_hal::time::MilliSeconds::from_ticks(
             current.ticks().wrapping_sub(old.ticks()),
         );
 
-        if ws2811.is_done() {
-            ws2811.start_update();
-        }
+
         // if transfer.is_done() {
-            // delay.delay_ms(2u16); // need some delay here to make the 150 us low.
-            // sprintln!("done {}, going into wait", my_timer.now());
-            // s.service();
+        // delay.delay_ms(2u16); // need some delay here to make the 150 us low.
+        // sprintln!("done {}, going into wait", my_timer.now());
+        // s.service();
 
-            // let (buf, spi_dma) = transfer.wait();
-            // sprintln!("starting {} w", my_timer.now());
-            // s.service();
+        // let (buf, spi_dma) = transfer.wait();
+        // sprintln!("starting {} w", my_timer.now());
+        // s.service();
 
-            // transfer = spi_dma.write(buf);
+        // transfer = spi_dma.write(buf);
 
-            // sprintln!("exiting write {}", my_timer.now());
-            // s.service();
+        // sprintln!("exiting write {}", my_timer.now());
+        // s.service();
         // }
         // It's taking 16ms :< -> 8ms now, that should be sufficient... 125Hz update rate.
 
-        if diff > stm32f1xx_hal::time::ms(1000) {
+        if diff > stm32f1xx_hal::time::ms(10) {
             // my_timer.reset()
             // dp.TIM2.reset();
             old = current;
@@ -226,6 +227,17 @@ fn main() -> ! {
             continue;
         }
 
+        if ws2811.is_ready() {
+            set_rgbw(&mut colors);
+            let cu8 = (c % 255) as u8;
+            // set_color(&mut colors, &RGB{r: cu8, g: 0, b: 0});
+            // let v = current.ticks();
+            c += 1;
+            sprintln!("{}  {} \n", c, c % 255);
+            set_limit(&mut colors, cu8);
+            ws2811.prepare(&colors);
+            ws2811.update();
+        }
         if led_state {
             led.set_low();
         } else {
