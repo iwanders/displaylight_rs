@@ -37,7 +37,7 @@ use displaylight_fw::spi_ws2811;
 use displaylight_fw::types::RGB;
 
 use displaylight_fw::sprintln;
-use displaylight_fw::clock::{setup_clock, clock_us, clock_ms, clock_us_u64};
+
 
 use cortex_m::singleton;
 
@@ -71,7 +71,6 @@ fn set_limit(leds: &mut [RGB], value: u8) {
     }
 }
 
-/**/
 
 
 #[cfg_attr(not(test), entry)]
@@ -190,7 +189,7 @@ fn main() -> ! {
     let mut led_state: bool = false;
     let mut c = 0usize;
 
-    let mut start_us = my_timer.now();
+
     loop {
         v += 1;
         unsafe {
