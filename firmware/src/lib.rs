@@ -6,4 +6,3 @@ pub mod serial;
 pub mod spi_ws2811;
 pub mod spsc;
 pub mod types;
-

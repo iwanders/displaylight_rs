@@ -38,11 +38,9 @@ use displaylight_fw::types::RGB;
 
 use displaylight_fw::sprintln;
 
-
 use cortex_m::singleton;
 
 static mut G_V: usize = 0;
-
 
 fn set_rgbw(leds: &mut [RGB], offset: usize) {
     for i in 0..leds.len() {
@@ -70,8 +68,6 @@ fn set_limit(leds: &mut [RGB], value: u8) {
         v.limit(value);
     }
 }
-
-
 
 #[cfg_attr(not(test), entry)]
 fn main() -> ! {
@@ -140,25 +136,17 @@ fn main() -> ! {
     let filter = gamma::Gamma::correction();
     // let filter = gamma::Gamma::linear();
 
-
-
-    // delay_clock.delay_ms(2u16);
-
     // counter_ms: Can wait from 2 ms to 65 sec for 16-bit timer
     // counter_us: Can wait from 2 μs to 65 ms for 16-bit timer
-    // let mut my_timer = dp.TIM2
-    // setup_clock(dp.TIM2, clocks);
+    // Start something to keep time.
     let mut my_timer = dp.TIM2.counter_us(&clocks);
     my_timer.start(64.millis()).unwrap();
 
-    // let mut old = clock_ms();
     let mut old = my_timer.now();
 
-
-
-    let mut delay_clock = dp.TIM3.delay_us(&clocks);
-    delay_clock.delay_ms(100u16);
-
+    // Create something that can perform delays.
+    // let mut delay_clock = dp.TIM3.delay_us(&clocks);
+    // delay_clock.delay_ms(100u16);
 
     // Setup usb serial
     let mut gpioa = dp.GPIOA.split();
@@ -183,12 +171,9 @@ fn main() -> ! {
     let mut s = serial::Serial::init(usb);
     s.service();
 
-    // delay_clock.delay_ms(10000u16);
-
     let mut v = 0usize;
     let mut led_state: bool = false;
     let mut c = 0usize;
-
 
     loop {
         v += 1;
@@ -197,38 +182,18 @@ fn main() -> ! {
             core::ptr::read_volatile(&G_V);
         }
         s.service();
-        // continue;
 
         let current = my_timer.now();
         let diff = stm32f1xx_hal::time::MicroSeconds::from_ticks(
             current.ticks().wrapping_sub(old.ticks()),
         );
 
-        // if transfer.is_done() {
-        // delay.delay_ms(2u16); // need some delay here to make the 150 us low.
-        // sprintln!("done {}, going into wait", my_timer.now());
-        // s.service();
-
-        // let (buf, spi_dma) = transfer.wait();
-        // sprintln!("starting {} w", my_timer.now());
-        // s.service();
-
-        // transfer = spi_dma.write(buf);
-
-        // sprintln!("exiting write {}", my_timer.now());
-        // s.service();
-        // }
-        // It's taking 16ms :< -> 8ms now, that should be sufficient... 125Hz update rate.
-
-        // sprintln!("current: {}, clock: {}, old: {} diff: {}", current, clock_ms(), old, diff);
         if diff > stm32f1xx_hal::time::ms(10) {
-            // my_timer.reset()
-            // dp.TIM2.reset();
             old = current;
         } else {
             continue;
         }
-        sprintln!("{}  {} \n", current, c % 255);
+        // sprintln!("{}  {} \n", current, c % 255);
 
         if ws2811.is_ready() {
             set_rgbw(&mut colors, 2);
@@ -246,18 +211,13 @@ fn main() -> ! {
             ws2811.prepare(&colors);
             ws2811.update();
         }
+
         if led_state {
             led.set_low();
         } else {
             led.set_high();
         }
         led_state = !led_state;
-
-        // let tic = my_timer.now();
-        // delay_clock.delay_ms(10u16);
-        // let toc = my_timer.now();
-
-        // sprintln!("{} {}, {}\n", v);
 
         while s.available() {
             if let Some(v) = s.read() {
