@@ -91,32 +91,44 @@ use core::borrow::BorrowMut;
 fn TIM2() {
     GLOBAL_CLOCK_US.fetch_add((SERVICE_INTERVAL_MS * 1000) as usize, Ordering::Release);
     let c = GLOBAL_CLOCK_US.load(Ordering::Relaxed);
-    // sprintln!("Serial: {}", c);
-    // displaylight_fw::serial::Serial::new().service();
     cortex_m::interrupt::free(|cs| {
         GLOBAL_TIMER.borrow(cs).borrow_mut().as_mut().unwrap().clear_interrupt(stm32f1xx_hal::timer::Event::Update);
     });
 }
 
 fn clock_ms() -> stm32f1xx_hal::time::MilliSeconds {
-    // static mut TIM: Option<CounterUs<TIM2>> = None;
-    // let tim = unsafe { TIM.get_or_insert_with(|| {
-        // cortex_m::interrupt::free(|cs| {
-            // GLOBAL_TIMER.borrow(cs).replace(None).unwrap()
-        // })
-    // })};
     let v = unsafe { 
         cortex_m::interrupt::free(|cs| {
             GLOBAL_TIMER.borrow(cs).borrow_mut().as_mut().unwrap().now().ticks()
         })
     };
-
-    // let v = tim.now().ticks() / 1000;
-
+    let v = v / 1000;
     let c = GLOBAL_CLOCK_US.load(Ordering::Relaxed);
     let c = c + v as usize;
     stm32f1xx_hal::time::MilliSeconds::from_ticks((c / 1000) as u32)
 }
+
+fn clock_us() -> stm32f1xx_hal::time::MicroSeconds {
+    let v = unsafe { 
+        cortex_m::interrupt::free(|cs| {
+            GLOBAL_TIMER.borrow(cs).borrow_mut().as_mut().unwrap().now().ticks()
+        })
+    };
+    let c = GLOBAL_CLOCK_US.load(Ordering::Relaxed);
+    let c = c + v as usize;
+    stm32f1xx_hal::time::MicroSeconds::from_ticks(c as u32)
+}
+
+fn clock_us_u64() -> u64 {
+    let v = unsafe { 
+        cortex_m::interrupt::free(|cs| {
+            GLOBAL_TIMER.borrow(cs).borrow_mut().as_mut().unwrap().now().ticks()
+        })
+    };
+    let c = GLOBAL_CLOCK_US.load(Ordering::Relaxed) as u64;
+    c + v as u64
+}
+
 
 
 #[cfg_attr(not(test), entry)]
@@ -239,6 +251,8 @@ fn main() -> ! {
     let mut v = 0usize;
     let mut led_state: bool = false;
     let mut c = 0usize;
+
+    let mut start_us = clock_us_u64();
     loop {
         v += 1;
         unsafe {
@@ -269,8 +283,8 @@ fn main() -> ! {
         // }
         // It's taking 16ms :< -> 8ms now, that should be sufficient... 125Hz update rate.
 
-            sprintln!("{}", clock_ms());
-        if diff > stm32f1xx_hal::time::ms(10) {
+        // sprintln!("current: {}, clock: {}, old: {} diff: {}", current, clock_ms(), old, diff);
+        if diff > stm32f1xx_hal::time::ms(20) {
             // my_timer.reset()
             // dp.TIM2.reset();
             old = current;
@@ -301,7 +315,7 @@ fn main() -> ! {
         led_state = !led_state;
 
         // let tic = my_timer.now();
-        delay_clock.delay_ms(10u16);
+        // delay_clock.delay_ms(10u16);
         // let toc = my_timer.now();
 
         // sprintln!("{} {}, {}\n", v);
