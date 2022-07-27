@@ -37,6 +37,7 @@ use displaylight_fw::spi_ws2811;
 use displaylight_fw::types::RGB;
 
 use displaylight_fw::sprintln;
+use displaylight_fw::clock::{setup_clock, clock_us, clock_ms, clock_us_u64};
 
 use cortex_m::singleton;
 
@@ -71,64 +72,6 @@ fn set_limit(leds: &mut [RGB], value: u8) {
 }
 
 /**/
-// global timekeeping.
-use core::sync::atomic::AtomicUsize;
-use core::sync::atomic::Ordering;
- use stm32f1xx_hal::pac::TIM2;
-
-use core::cell::RefCell;
-use cortex_m::interrupt::Mutex;
-const SERVICE_INTERVAL_MS: u32 = 10;
-static GLOBAL_CLOCK_US: AtomicUsize = AtomicUsize::new(0);
-use stm32f1xx_hal::timer::CounterUs;
-static GLOBAL_TIMER: Mutex<RefCell<Option<CounterUs<TIM2>>>> = Mutex::new(RefCell::new(None));
-
-// TIM2 interrupt, service usb every 5ms and keeps track of global timekeeping
-use stm32f1xx_hal::pac::{interrupt, Interrupt, NVIC};
-use core::borrow::BorrowMut;
-
-#[interrupt]
-fn TIM2() {
-    GLOBAL_CLOCK_US.fetch_add((SERVICE_INTERVAL_MS * 1000) as usize, Ordering::Release);
-    let c = GLOBAL_CLOCK_US.load(Ordering::Relaxed);
-    cortex_m::interrupt::free(|cs| {
-        GLOBAL_TIMER.borrow(cs).borrow_mut().as_mut().unwrap().clear_interrupt(stm32f1xx_hal::timer::Event::Update);
-    });
-}
-
-fn clock_ms() -> stm32f1xx_hal::time::MilliSeconds {
-    let v = unsafe { 
-        cortex_m::interrupt::free(|cs| {
-            GLOBAL_TIMER.borrow(cs).borrow_mut().as_mut().unwrap().now().ticks()
-        })
-    };
-    let v = v / 1000;
-    let c = GLOBAL_CLOCK_US.load(Ordering::Relaxed);
-    let c = c + v as usize;
-    stm32f1xx_hal::time::MilliSeconds::from_ticks((c / 1000) as u32)
-}
-
-fn clock_us() -> stm32f1xx_hal::time::MicroSeconds {
-    let v = unsafe { 
-        cortex_m::interrupt::free(|cs| {
-            GLOBAL_TIMER.borrow(cs).borrow_mut().as_mut().unwrap().now().ticks()
-        })
-    };
-    let c = GLOBAL_CLOCK_US.load(Ordering::Relaxed);
-    let c = c + v as usize;
-    stm32f1xx_hal::time::MicroSeconds::from_ticks(c as u32)
-}
-
-fn clock_us_u64() -> u64 {
-    let v = unsafe { 
-        cortex_m::interrupt::free(|cs| {
-            GLOBAL_TIMER.borrow(cs).borrow_mut().as_mut().unwrap().now().ticks()
-        })
-    };
-    let c = GLOBAL_CLOCK_US.load(Ordering::Relaxed) as u64;
-    c + v as u64
-}
-
 
 
 #[cfg_attr(not(test), entry)]
@@ -204,18 +147,13 @@ fn main() -> ! {
 
     // counter_ms: Can wait from 2 ms to 65 sec for 16-bit timer
     // counter_us: Can wait from 2 μs to 65 ms for 16-bit timer
+    // let mut my_timer = dp.TIM2
+    // setup_clock(dp.TIM2, clocks);
     let mut my_timer = dp.TIM2.counter_us(&clocks);
-    my_timer.start(SERVICE_INTERVAL_MS.millis()).unwrap();
+    my_timer.start(64.millis()).unwrap();
 
-    my_timer.listen(stm32f1xx_hal::timer::Event::Update);
-    // Start the usb service routine.
-    cortex_m::interrupt::free(|cs| *GLOBAL_TIMER.borrow(cs).borrow_mut() = Some(my_timer));
-
-    unsafe {
-        NVIC::unmask(Interrupt::TIM2);
-    }
-
-    let mut old = clock_ms();
+    // let mut old = clock_ms();
+    let mut old = my_timer.now();
 
 
 
@@ -252,7 +190,7 @@ fn main() -> ! {
     let mut led_state: bool = false;
     let mut c = 0usize;
 
-    let mut start_us = clock_us_u64();
+    let mut start_us = my_timer.now();
     loop {
         v += 1;
         unsafe {
@@ -262,8 +200,8 @@ fn main() -> ! {
         s.service();
         // continue;
 
-        let current = clock_ms();
-        let diff = stm32f1xx_hal::time::MilliSeconds::from_ticks(
+        let current = my_timer.now();
+        let diff = stm32f1xx_hal::time::MicroSeconds::from_ticks(
             current.ticks().wrapping_sub(old.ticks()),
         );
 
@@ -284,13 +222,14 @@ fn main() -> ! {
         // It's taking 16ms :< -> 8ms now, that should be sufficient... 125Hz update rate.
 
         // sprintln!("current: {}, clock: {}, old: {} diff: {}", current, clock_ms(), old, diff);
-        if diff > stm32f1xx_hal::time::ms(20) {
+        if diff > stm32f1xx_hal::time::ms(10) {
             // my_timer.reset()
             // dp.TIM2.reset();
             old = current;
         } else {
             continue;
         }
+        sprintln!("{}  {} \n", current, c % 255);
 
         if ws2811.is_ready() {
             set_rgbw(&mut colors, 2);
@@ -300,7 +239,8 @@ fn main() -> ! {
             // set_color(&mut colors, &RGB{r: 0, g: 0, b: cu8});
             // let v = current.ticks();
             c += 1;
-            sprintln!("{}  {} \n", c, c % 255);
+            sprintln!("{}  {} \n", current, c % 255);
+            // sprintln!("c: {}, us: {}, u64: {} \n", clock_ms(), clock_us(), clock_us_u64());
             set_limit(&mut colors, cu8);
             // set_limit(&mut colors, 1);
             filter.apply(&mut colors);
