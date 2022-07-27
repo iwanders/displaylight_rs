@@ -1,5 +1,9 @@
 use crate::types::RGB;
 
+// https://github.com/stm32-rs/stm32f1xx-hal/blob/f9b24f4d9bac7fc3c93764bd295125800944f53b/examples/spi-dma.rs
+// https://github.com/stm32-rs/stm32f1xx-hal/blob/f9b24f4d9bac7fc3c93764bd295125800944f53b/examples/adc-dma-circ.rs
+// Ideally we make a ringbuffer and keep writing... but lets leave that for now.
+
 /*
 From datasheet:
            _______

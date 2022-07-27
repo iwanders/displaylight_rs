@@ -42,6 +42,7 @@ use cortex_m::singleton;
 
 static mut G_V: usize = 0;
 
+
 fn set_rgbw(leds: &mut [RGB], offset: usize) {
     for i in 0..leds.len() {
         let v = (i + offset) % 4;
@@ -69,12 +70,65 @@ fn set_limit(leds: &mut [RGB], value: u8) {
     }
 }
 
+/**/
+// global timekeeping.
+use core::sync::atomic::AtomicUsize;
+use core::sync::atomic::Ordering;
+ use stm32f1xx_hal::pac::TIM2;
+
+use core::cell::RefCell;
+use cortex_m::interrupt::Mutex;
+const SERVICE_INTERVAL_MS: u32 = 10;
+static GLOBAL_CLOCK_US: AtomicUsize = AtomicUsize::new(0);
+use stm32f1xx_hal::timer::CounterUs;
+static GLOBAL_TIMER: Mutex<RefCell<Option<CounterUs<TIM2>>>> = Mutex::new(RefCell::new(None));
+
+// TIM2 interrupt, service usb every 5ms and keeps track of global timekeeping
+use stm32f1xx_hal::pac::{interrupt, Interrupt, NVIC};
+use core::borrow::BorrowMut;
+
+#[interrupt]
+fn TIM2() {
+    GLOBAL_CLOCK_US.fetch_add((SERVICE_INTERVAL_MS * 1000) as usize, Ordering::Release);
+    let c = GLOBAL_CLOCK_US.load(Ordering::Relaxed);
+    // sprintln!("Serial: {}", c);
+    // displaylight_fw::serial::Serial::new().service();
+    cortex_m::interrupt::free(|cs| {
+        GLOBAL_TIMER.borrow(cs).borrow_mut().as_mut().unwrap().clear_interrupt(stm32f1xx_hal::timer::Event::Update);
+    });
+}
+
+fn clock_ms() -> stm32f1xx_hal::time::MilliSeconds {
+    // static mut TIM: Option<CounterUs<TIM2>> = None;
+    // let tim = unsafe { TIM.get_or_insert_with(|| {
+        // cortex_m::interrupt::free(|cs| {
+            // GLOBAL_TIMER.borrow(cs).replace(None).unwrap()
+        // })
+    // })};
+    let v = unsafe { 
+        cortex_m::interrupt::free(|cs| {
+            GLOBAL_TIMER.borrow(cs).borrow_mut().as_mut().unwrap().now().ticks()
+        })
+    };
+
+    // let v = tim.now().ticks() / 1000;
+
+    let c = GLOBAL_CLOCK_US.load(Ordering::Relaxed);
+    let c = c + v as usize;
+    stm32f1xx_hal::time::MilliSeconds::from_ticks((c / 1000) as u32)
+}
+
+
 #[cfg_attr(not(test), entry)]
 fn main() -> ! {
     // Get access to the core peripherals from the cortex-m crate
     let _cp = cortex_m::Peripherals::take().unwrap();
     // Get access to the device specific peripherals from the peripheral access crate
     let dp = pac::Peripherals::take().unwrap();
+
+    // Configure the syst timer to trigger an update every second
+    // let mut timer = Timer::syst(cp.SYST, &clocks).counter_hz();
+    // timer.start(5.Hz()).unwrap();
 
     // Take ownership over the raw flash and rcc devices and convert them into the corresponding
     // HAL structs
@@ -100,12 +154,64 @@ fn main() -> ! {
     // Configure gpio C pin 13 as a push-pull output. The `crh` register is passed to the function
     // in order to configure the port. For pins 0-7, crl should be passed instead.
     let mut led = gpioc.pc13.into_push_pull_output(&mut gpioc.crh);
-    // Configure the syst timer to trigger an update every second
-    // let mut timer = Timer::syst(cp.SYST, &clocks).counter_hz();
-    // timer.start(5.Hz()).unwrap();
+
+    // spi on bus B
+    let mut gpiob = dp.GPIOB.split();
+    let pins = (
+        // (sck, miso, mosi)
+        // gpiob.pb13.into_alternate_push_pull(&mut gpiob.crh),
+        stm32f1xx_hal::spi::NoSck,
+        // gpiob.pb14.into_floating_input(&mut gpiob.crh),
+        stm32f1xx_hal::spi::NoMiso,
+        gpiob.pb15.into_alternate_push_pull(&mut gpiob.crh),
+    );
+    // Set up the DMA device
+    let dma = dp.DMA1.split();
+
+    const LEDS: usize = 226;
+    const BUFFER_SIZE: usize = spi_ws2811::Ws2811SpiDmaDriver::calculate_buffer_size(LEDS);
+
+    // Create the led buffer, this is moved to the spi ws2811 driver.
+    let buf = singleton!(: [u8; BUFFER_SIZE] = [0; BUFFER_SIZE]).unwrap();
+
+    // Create the led color buffer, this allows updating the driver from this.
+    let mut colors: [RGB; LEDS] = [RGB::BLACK; LEDS];
+
+    let mut ws2811 =
+        spi_ws2811::Ws2811SpiDmaDriver::new(dp.SPI2, pins, clocks, dma.5, &mut buf[..]);
+    ws2811.prepare(&colors);
+    ws2811.update();
+
+    // Create the gamma correction tables.
+    let filter = gamma::Gamma::correction();
+    // let filter = gamma::Gamma::linear();
+
+
+
+    // delay_clock.delay_ms(2u16);
+
+    // counter_ms: Can wait from 2 ms to 65 sec for 16-bit timer
+    // counter_us: Can wait from 2 μs to 65 ms for 16-bit timer
+    let mut my_timer = dp.TIM2.counter_us(&clocks);
+    my_timer.start(SERVICE_INTERVAL_MS.millis()).unwrap();
+
+    my_timer.listen(stm32f1xx_hal::timer::Event::Update);
+    // Start the usb service routine.
+    cortex_m::interrupt::free(|cs| *GLOBAL_TIMER.borrow(cs).borrow_mut() = Some(my_timer));
+
+    unsafe {
+        NVIC::unmask(Interrupt::TIM2);
+    }
+
+    let mut old = clock_ms();
+
+
+
+    let mut delay_clock = dp.TIM3.delay_us(&clocks);
+    delay_clock.delay_ms(100u16);
+
 
     // Setup usb serial
-
     let mut gpioa = dp.GPIOA.split();
 
     // BluePill board has a pull-up resistor on the D+ line.
@@ -126,67 +232,9 @@ fn main() -> ! {
     };
 
     let mut s = serial::Serial::init(usb);
+    s.service();
 
-    // https://github.com/stm32-rs/stm32f1xx-hal/blob/f9b24f4d9bac7fc3c93764bd295125800944f53b/examples/spi-dma.rs
-    // https://github.com/stm32-rs/stm32f1xx-hal/blob/f9b24f4d9bac7fc3c93764bd295125800944f53b/examples/adc-dma-circ.rs
-    // We want an SPI transaction that just keeps writing bytes on the port.
-    //
-    // spi on bus B
-    let mut gpiob = dp.GPIOB.split();
-    let pins = (
-        // (sck, miso, mosi)
-        // gpiob.pb13.into_alternate_push_pull(&mut gpiob.crh),
-        stm32f1xx_hal::spi::NoSck,
-        // gpiob.pb14.into_floating_input(&mut gpiob.crh),
-        stm32f1xx_hal::spi::NoMiso,
-        gpiob.pb15.into_alternate_push_pull(&mut gpiob.crh),
-    );
-    // Set up the DMA device
-    let dma = dp.DMA1.split();
-
-    // Connect the SPI device to the DMA
-
-    const LEDS: usize = 226;
-    const BUFFER_SIZE: usize = spi_ws2811::Ws2811SpiDmaDriver::calculate_buffer_size(LEDS);
-
-    let buf = singleton!(: [u8; BUFFER_SIZE] = [0; BUFFER_SIZE]).unwrap();
-    let mut colors: [RGB; LEDS] = [RGB::BLACK; LEDS];
-    set_rgbw(&mut colors[..], 0);
-    set_limit(&mut colors[..], 1);
-
-    let mut ws2811 =
-        spi_ws2811::Ws2811SpiDmaDriver::new(dp.SPI2, pins, clocks, dma.5, &mut buf[..]);
-    ws2811.prepare(&colors);
-    ws2811.update();
-
-    let filter = gamma::Gamma::correction();
-    // let filter = gamma::Gamma::linear();
-
-    // Start a DMA transfer
-    // let mut transfer = spi_dma.write(buf);
-    // - spi
-
-    // Wait for it to finnish. The transfer takes ownership over the SPI device
-    // and the data being sent anb those things are returned by transfer.wait
-    // let (_buffer, _spi_dma) = transfer.wait();
-
-    // let mut my_timer = dp.TIM2.counter_us(&clocks);
-    // my_timer.configure(&clocks);
-    // my_timer.start(1<<32);
-    // my_timer.start(100.millis()).unwrap();
-    // counters are 16 bit, sob
-    // counter_ms: Can wait from 2 ms to 65 sec for 16-bit timer
-    // counter_us: Can wait from 2 μs to 65 ms for 16-bit timer
-    let mut my_timer = dp.TIM2.counter_ms(&clocks);
-    my_timer.start(60.secs()).unwrap();
-    let mut old = my_timer.now();
-
-    // let mut my_timer = _cp.SYST.counter_us(&clocks);
-    // my_timer.start(30_000.millis()).unwrap();
-    // let mut my_timer = stm32f1xx_hal::timer::FTimerUs::new(dp.TIM2, &clocks).counter_us();
-
-    let mut delay = dp.TIM3.delay_us(&clocks);
-    delay.delay_ms(100u16);
+    // delay_clock.delay_ms(10000u16);
 
     let mut v = 0usize;
     let mut led_state: bool = false;
@@ -198,8 +246,9 @@ fn main() -> ! {
             core::ptr::read_volatile(&G_V);
         }
         s.service();
+        // continue;
 
-        let current = my_timer.now();
+        let current = clock_ms();
         let diff = stm32f1xx_hal::time::MilliSeconds::from_ticks(
             current.ticks().wrapping_sub(old.ticks()),
         );
@@ -220,6 +269,7 @@ fn main() -> ! {
         // }
         // It's taking 16ms :< -> 8ms now, that should be sufficient... 125Hz update rate.
 
+            sprintln!("{}", clock_ms());
         if diff > stm32f1xx_hal::time::ms(10) {
             // my_timer.reset()
             // dp.TIM2.reset();
@@ -238,6 +288,7 @@ fn main() -> ! {
             c += 1;
             sprintln!("{}  {} \n", c, c % 255);
             set_limit(&mut colors, cu8);
+            // set_limit(&mut colors, 1);
             filter.apply(&mut colors);
             ws2811.prepare(&colors);
             ws2811.update();
@@ -249,11 +300,11 @@ fn main() -> ! {
         }
         led_state = !led_state;
 
-        let tic = my_timer.now();
-        delay.delay_ms(10u16);
-        let toc = my_timer.now();
+        // let tic = my_timer.now();
+        delay_clock.delay_ms(10u16);
+        // let toc = my_timer.now();
 
-        sprintln!("{} {}, {}\n", v, tic, toc);
+        // sprintln!("{} {}, {}\n", v);
 
         while s.available() {
             if let Some(v) = s.read() {

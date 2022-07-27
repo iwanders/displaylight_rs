@@ -206,7 +206,8 @@ fn read_to_buffer() {
         // let usb_dev = unsafe { USB_DEVICE.as_mut().unwrap() };
         let writer = unsafe { BUFFER_FROM_HOST_WRITER.as_mut().unwrap() };
 
-        // Data coming from the PC... we really don't want to lose this.
+        // Data coming from the PC... we really don't want to lose this, leave it in the usb
+        // serial device from host writer is full.
         while !writer.is_full() {
             let mut buf = [0u8; 1];
             match serial.read(&mut buf) {
