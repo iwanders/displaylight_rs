@@ -2,6 +2,8 @@ pub struct WriteOverrun();
 // pub struct ReadOverrun();
 
 /*
+    Standard single consumer single producer ring buffer.
+
     if read_pos == write_pos, no data.
     write_pos denotes where where we are going to write.
     read_pos denotes up to where we have read.
@@ -29,6 +31,7 @@ impl<T, const N: usize> SpScRingbuffer<T, N> {
     const VAL: UnsafeCell<MaybeUninit<T>> = UnsafeCell::new(MaybeUninit::uninit());
     // type Writer = Writer<'a, T, N>; // nope; https://github.com/rust-lang/rust/issues/8995
 
+    /// Create a new Single Producer Single Consumer ringbuffer.
     pub const fn new() -> Self {
         // Odd workaround for E0277
         SpScRingbuffer::<T, N> {
@@ -48,10 +51,12 @@ impl<T, const N: usize> SpScRingbuffer<T, N> {
         self.write_pos = AtomicUsize::new(v);
     }
 
+    /// Indicates whether the ringbuffer empty.
     pub fn is_empty(&self) -> bool {
         self.read_pos.load(Ordering::Relaxed) == self.write_pos.load(Ordering::Relaxed)
     }
 
+    /// Indicates whether is the ringbuffer full.
     pub fn is_full(&self) -> bool {
         ((self.write_pos.load(Ordering::Relaxed) + 1) % N) == self.read_pos.load(Ordering::Relaxed)
     }
@@ -66,7 +71,7 @@ impl<T, const N: usize> SpScRingbuffer<T, N> {
         unsafe { self.peek_value_unsafe() }
     }
 
-    // Private worker functiont that can use interior mutability to allow reading values on a const
+    // Private worker function that can use interior mutability to allow reading values on a const
     // version of self without having to do const casts.
     unsafe fn read_value_unsafe(&self) -> Option<T> {
         // check if there's something to return
@@ -85,7 +90,7 @@ impl<T, const N: usize> SpScRingbuffer<T, N> {
         Some(v)
     }
 
-    // Private worker functiont that can use interior mutability to allow reading values on a const
+    // Private worker function that can use interior mutability to allow reading values on a const
     // version of self without having to do const casts.
     unsafe fn peek_value_unsafe(&self) -> Option<&T> {
         // check if there's something to return
@@ -130,11 +135,15 @@ impl<T, const N: usize> SpScRingbuffer<T, N> {
         Ok(())
     }
 
+    /// Split the SpScRingBuffer into a mutable reader and writer component, both allowing only
+    /// writing or reading into the ringbuffer, which allows for two different components to hold
+    /// their respective read or write mutable handles to the same ringbuffer.
     pub fn split<'a>(&'a mut self) -> (Reader<'a, T, N>, Writer<'a, T, N>) {
         (Reader::new(self), Writer::new(self))
     }
 }
 
+/// Writer interface for the ringbuffer.
 pub struct Writer<'a, T, const N: usize> {
     buffer: &'a SpScRingbuffer<T, { N }>,
 }
@@ -144,15 +153,18 @@ impl<'a, T, const N: usize> Writer<'a, T, { N }> {
         Self { buffer }
     }
 
+    /// Write a value into the ringbuffer.
     pub fn write_value(&mut self, value: T) -> Result<(), WriteOverrun> {
         unsafe { self.buffer.write_value_unsafe(value) }
     }
 
+    /// Checks if the ringbuffer is full.
     pub fn is_full(&self) -> bool {
         self.buffer.is_full()
     }
 }
 
+/// Reader interface for the ringbuffer.
 pub struct Reader<'a, T, const N: usize> {
     buffer: &'a SpScRingbuffer<T, { N }>,
 }
@@ -162,14 +174,17 @@ impl<'a, T, const N: usize> Reader<'a, T, { N }> {
         Self { buffer }
     }
 
+    /// Checks if the ringbuffer is empty.
     pub fn is_empty(&self) -> bool {
         self.buffer.is_empty()
     }
 
+    /// Reads a value from the ringbuffer.
     pub fn read_value(&mut self) -> Option<T> {
         unsafe { self.buffer.read_value_unsafe() }
     }
 
+    /// Peeks at a value from the ringbuffer. This does not consume it.
     pub fn peek_value(&mut self) -> Option<&T> {
         unsafe { self.buffer.peek_value_unsafe() }
     }

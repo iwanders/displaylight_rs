@@ -1,5 +1,7 @@
 use crate::types::RGB;
 
+// SPI-bus based ws2811 driver, just like the other cool kids do.
+
 // https://github.com/stm32-rs/stm32f1xx-hal/blob/f9b24f4d9bac7fc3c93764bd295125800944f53b/examples/spi-dma.rs
 // https://github.com/stm32-rs/stm32f1xx-hal/blob/f9b24f4d9bac7fc3c93764bd295125800944f53b/examples/adc-dma-circ.rs
 // Ideally we make a ringbuffer and keep writing... but lets leave that for now.
@@ -46,6 +48,7 @@ on the expanded data...
 const WS2811_0BIT: u8 = 0b11000000;
 const WS2811_1BIT: u8 = 0b11111100;
 
+/// Function to expand the color bytes into spi bytes.
 pub fn convert_color_to_buffer(colors: &[RGB], buffer: &mut [u8]) {
     assert_eq!(colors.len() * 3 * 8, buffer.len());
     let mut buffer_i = 0usize;
@@ -84,32 +87,48 @@ type SpiPins = (
 );
 type SpiDma = TxDma<Spi<SpiPort, Spi2NoRemap, SpiPins, u8>, DmaType>;
 type TransferType = Transfer<stm32f1xx_hal::dma::R, &'static mut [u8], SpiDma>;
-
 type StaticBuffer = &'static mut [u8];
+
+
+/// Struct to hold the components if no transfer is ongoing.
 struct Pending {
     spi_dma: SpiDma,
     buffer: StaticBuffer,
 }
 impl Pending {
+    /// Split the pending struct into the spi dma bus and the data buffer.
     pub fn split(self) -> (SpiDma, StaticBuffer) {
         (self.spi_dma, self.buffer)
     }
 }
 
+/// Spi DMA driver struct, either pending is populate OR transfer is populated.
+/// Flow after setup is:
+///   ws2811.prepare(&colors); // updates the internal buffer
+///   ws2811.update(); // Starts the transfer
+///   while !ws2811.is_ready() {} // block until raed to prepare again.
 pub struct Ws2811SpiDmaDriver {
     pending: Option<Pending>,
     transfer: Option<TransferType>,
 }
 
 impl Ws2811SpiDmaDriver {
-    const PREAMBLE_COUNT: usize = 1; // just to ensur we have some zeros.
-    const POST_COUNT: usize = 7; // 25 usec... at 6 Mhz, that is 150 clocks, that's 18.75 bytes. Lets say 21, so 7 pixels.
+    /// Just to ensure we have some zeros at the start.
+    const PREAMBLE_COUNT: usize = 1;
+
+    /// LOW period to set the pixels; 25 usec... at 6 Mhz, that is 150 clocks, that's 18.75 bytes.
+    /// Lets say 21, so 7 pixels.
+    const POST_COUNT: usize = 7;
+
+    /// RGB is 3 channels, each bit is a full byte, so 8.
     const BYTES_PER_LED: usize = 3 * 8;
 
+    /// Calculate the size of the static buffer necessary to hold the data for a number of leds.
     pub const fn calculate_buffer_size(led_count: usize) -> usize {
         (led_count + Self::PREAMBLE_COUNT + Self::POST_COUNT) * Self::BYTES_PER_LED
     }
 
+    /// Setup the spi bus using the clock, pins, dma bus and static buffer.
     pub fn new(
         spi: stm32f1xx_hal::pac::SPI2,
         pins: SpiPins,
@@ -131,7 +150,7 @@ impl Ws2811SpiDmaDriver {
         }
     }
 
-    /// Trigger the transfer and update all the leds to the internal buffer state.
+    /// Trigger the transfer start and update all the leds to the internal state.
     pub fn update(&mut self) {
         self.finalize_transfer();
         if let Some(pending) = self.pending.take() {
@@ -141,6 +160,7 @@ impl Ws2811SpiDmaDriver {
         }
     }
 
+    /// Returns whether the transfer is complete, only makes sense when a transfer is ongoing.
     fn is_transfer_complete(&self) -> bool {
         if let Some(transfer) = &self.transfer {
             return transfer.is_done();
@@ -148,6 +168,8 @@ impl Ws2811SpiDmaDriver {
         return false;
     }
 
+    /// Function to finalize a transfer if it can be finalized, this moves the transfer back
+    /// into the buffer and spi_dma pending object.
     fn finalize_transfer(&mut self) {
         if !self.is_transfer_complete() {
             return;
@@ -165,7 +187,7 @@ impl Ws2811SpiDmaDriver {
         self.pending.is_some()
     }
 
-    /// Prepare the buffer with the provided led size.
+    /// Prepare the internal buffer with the provided led size.
     pub fn prepare(&mut self, colors: &[RGB]) {
         if let Some(pending) = &mut self.pending {
             convert_color_to_buffer(

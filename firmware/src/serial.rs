@@ -44,13 +44,17 @@ static mut USB_SERIAL: Mutex<RefCell<Option<usbd_serial::SerialPort<UsbBusType>>
     Mutex::new(RefCell::new(None));
 static mut USB_DEVICE: Option<UsbDevice<UsbBusType>> = None;
 
-/// Serial object is the main interface to the ringbuffers that are serviced by the ISR.
+/// Serial object is the main interface to the serial port. Can be created multiple times if need be
+/// is 'thread safe', but data written at the same time may end up interleaved.
 pub struct Serial {}
 
 impl Serial {
+    /// Create a new serial object to interface.
     pub fn new() -> Self {
         Serial {}
     }
+
+    /// Initialise the USB serial port. This function may only be called once.
     pub fn init(usb: Peripheral) -> Self {
         // Unsafe to allow access to static variables
         unsafe {
@@ -91,6 +95,8 @@ impl Serial {
         Serial {}
     }
 
+    /// Write bytes from the data argument to the serial port, returns the amount of bytes consumed
+    /// from the slice. If it returns zero, no data was written to the serial port.
     pub fn write(&mut self, data: &[u8]) -> usize {
         let writer = unsafe { BUFFER_TO_HOST_WRITER.as_mut().unwrap() };
         let mut count = 0usize;
@@ -104,22 +110,28 @@ impl Serial {
         return count;
     }
 
+    /// Service method, this MUST be called at least every 10 ms for the host not to drop the device
+    /// may be called multiple times.
     pub fn service(&mut self) {
         usb_interrupt();
         write_from_buffer();
         read_to_buffer();
     }
 
+    /// Checks if there's any bytes pending from the host, available to be read.
     pub fn available(&self) -> bool {
         let reader = unsafe { BUFFER_FROM_HOST_READER.as_mut().unwrap() };
         !reader.is_empty()
     }
 
+    /// Reads a byte from the host, empty if no bytes are to be read.
     pub fn read(&self) -> Option<u8> {
         let reader = unsafe { BUFFER_FROM_HOST_READER.as_mut().unwrap() };
         reader.read_value()
     }
 
+    /// Read as many bytes as possible into a buffer slice, returns the number of bytes read into
+    /// it.
     pub fn read_into(&self, buffer: &mut [u8]) -> usize {
         let mut i = 0usize;
         while self.available() && i < buffer.len() {
@@ -153,7 +165,7 @@ impl core::fmt::Write for Serial {
     // fn write_fmt(&mut self, args: Arguments<'_>) -> Result { ... }
 }
 
-/// Provide a println! macro similar to Rust does.
+/// Provide a println! macro similar to Rust does, this can be called from anywhere.
 #[macro_export]
 macro_rules! sprintln {
     () => ($crate::io::print("\n"));
@@ -176,6 +188,7 @@ fn USB_HP_CAN_TX() {
 // usb_interrupt();
 // }
 
+/// Service function to write from the spsc to the PC serial port.
 fn write_from_buffer() {
     cortex_m::interrupt::free(|cs| {
         let mut serial_borrow = unsafe { USB_SERIAL.borrow(cs).borrow_mut() };
@@ -199,6 +212,7 @@ fn write_from_buffer() {
     });
 }
 
+/// Service function to write data from the PC to the serial spsc.
 fn read_to_buffer() {
     cortex_m::interrupt::free(|cs| {
         let mut serial_borrow = unsafe { USB_SERIAL.borrow(cs).borrow_mut() };
@@ -224,24 +238,10 @@ fn read_to_buffer() {
                 }
             }
         }
-
-        /*
-        let mut buf = [0u8; 64];
-        match serial.read(&mut buf) {
-            Ok(count) if count > 0 => {
-                for i in 0..count {
-                    let res = writer.write_value(buf[i]);
-                    if res.is_err() {
-                        break;
-                    }
-                }
-            }
-            _ => {}
-        }
-        */
     });
 }
 
+/// Service the actual usb device.
 fn usb_interrupt() {
     cortex_m::interrupt::free(|cs| {
         let mut serial_borrow = unsafe { USB_SERIAL.borrow(&cs).borrow_mut() };
