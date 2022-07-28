@@ -152,8 +152,8 @@ impl Default for Payload {
         Payload { raw: [0; 60] }
     }
 }
-use std::fmt;
-use std::fmt::Debug;
+use core::fmt;
+use core::fmt::Debug;
 impl Debug for Payload {
     /// Debug formatter for the payload always uses raw.
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -176,21 +176,21 @@ impl Debug for Message {
         match self.msg_type {
             MsgType::NOP => f
                 .debug_struct("Message")
-                .field("msg_type", &"nop".to_owned())
+                .field("msg_type", &"nop")
                 .finish(),
             MsgType::CONFIG => f
                 .debug_struct("Message")
-                .field("msg_type", &"config".to_owned())
+                .field("msg_type", &"config")
                 .field("config", unsafe { &self.payload.config })
                 .finish(),
             MsgType::COLOR => f
                 .debug_struct("Message")
-                .field("msg_type", &"color".to_owned())
+                .field("msg_type", &"color")
                 .field("config", unsafe { &self.payload.color })
                 .finish(),
             _ => f
                 .debug_struct("Message")
-                .field("msg_type", &"unknown".to_owned())
+                .field("msg_type", &"unknown")
                 .finish(),
         }
     }
@@ -204,9 +204,9 @@ impl Message {
             let rawptr = self as *const Self;
             let byte_ptr = rawptr as *const u8; // the reinterpret_cast
                                                 // return a bounded slice of bytes for inspection.
-            res[0..64].clone_from_slice(std::slice::from_raw_parts(
+            res[0..64].clone_from_slice(core::slice::from_raw_parts(
                 byte_ptr,
-                std::mem::size_of::<Self>(),
+                core::mem::size_of::<Self>(),
             ));
         }
         res
