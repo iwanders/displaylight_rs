@@ -6,6 +6,11 @@ pub struct Gamma {
     gamma_g: [u8; 256],
     gamma_b: [u8; 256],
 }
+impl Default for Gamma {
+    fn default() -> Gamma {
+        Gamma::linear()
+    }
+}
 
 const fn create_linear() -> [u8; 256] {
     let mut lookup = [0; 256];

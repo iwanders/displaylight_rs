@@ -22,52 +22,20 @@ use panic_halt as _;
 
 use cortex_m::asm::delay;
 use cortex_m_rt::entry;
-use stm32f1xx_hal::prelude::*; //, timer::Timer
+use stm32f1xx_hal::prelude::*;
 
-// use embedded_hal::digital::v2::OutputPin;
-// use embedded_hal::digital::v2::PinState::{High, Low};
-
-use stm32f1xx_hal::pac::{self}; // , interrupt, Interrupt, NVIC
-                                // use stm32f1xx_hal::prelude::*;
+use stm32f1xx_hal::pac::{self};
 use stm32f1xx_hal::usb::Peripheral;
 
-use displaylight_fw::gamma;
+
+use displaylight_fw::lights;
+use displaylight_fw::messages;
 use displaylight_fw::serial;
 use displaylight_fw::spi_ws2811;
 use displaylight_fw::types::RGB;
 
-use displaylight_fw::sprintln;
-
+// use displaylight_fw::sprintln;
 use cortex_m::singleton;
-
-static mut G_V: usize = 0;
-
-fn set_rgbw(leds: &mut [RGB], offset: usize) {
-    for i in 0..leds.len() {
-        let v = (i + offset) % 4;
-        if v == 0 {
-            leds[i] = RGB::RED;
-        } else if v == 1 {
-            leds[i] = RGB::GREEN;
-        } else if v == 2 {
-            leds[i] = RGB::BLUE;
-        } else if v == 3 {
-            leds[i] = RGB::WHITE;
-        }
-    }
-}
-
-fn set_color(leds: &mut [RGB], color: &RGB) {
-    for v in leds.iter_mut() {
-        *v = *color;
-    }
-}
-
-fn set_limit(leds: &mut [RGB], value: u8) {
-    for v in leds.iter_mut() {
-        v.limit(value);
-    }
-}
 
 #[cfg_attr(not(test), entry)]
 fn main() -> ! {
@@ -118,23 +86,24 @@ fn main() -> ! {
     // Set up the DMA device
     let dma = dp.DMA1.split();
 
-    const LEDS: usize = 226;
+    const REAL_LED_COUNT: usize = 228;
+    const LEDS: usize = REAL_LED_COUNT + 1; // one sacrificial led.
     const BUFFER_SIZE: usize = spi_ws2811::Ws2811SpiDmaDriver::calculate_buffer_size(LEDS);
 
     // Create the led buffer, this is moved to the spi ws2811 driver.
     let buf = singleton!(: [u8; BUFFER_SIZE] = [0; BUFFER_SIZE]).unwrap();
 
     // Create the led color buffer, this allows updating the driver from this.
-    let mut colors: [RGB; LEDS] = [RGB::BLACK; LEDS];
+    let colors = singleton!(: [RGB; LEDS] = [RGB::BLACK; LEDS]).unwrap();
 
     let mut ws2811 =
         spi_ws2811::Ws2811SpiDmaDriver::new(dp.SPI2, pins, clocks, dma.5, &mut buf[..]);
-    ws2811.prepare(&colors);
+    ws2811.prepare(colors);
     ws2811.update();
 
-    // Create the gamma correction tables.
-    let filter = gamma::Gamma::correction();
-    // let filter = gamma::Gamma::linear();
+    // Create the lights struct.
+    const led_offset: usize = 1; // the sacrificial led
+    let mut lights = lights::Lights::new(colors, led_offset);
 
     // counter_ms: Can wait from 2 ms to 65 sec for 16-bit timer
     // counter_us: Can wait from 2 μs to 65 ms for 16-bit timer
@@ -169,62 +138,35 @@ fn main() -> ! {
     };
 
     let mut s = serial::Serial::init(usb);
-    s.service();
 
-    let mut v = 0usize;
-    let mut led_state: bool = false;
-    let mut c = 0usize;
 
     loop {
-        v += 1;
-        unsafe {
-            G_V = v;
-            core::ptr::read_volatile(&G_V);
-        }
         s.service();
+
+        if s.available() {
+            let mut msg_buff = [0u8; messages::Message::LENGTH];
+            let mut read_buff = &mut msg_buff[..];
+            while !read_buff.is_empty() {
+                let read = s.read_into(read_buff);
+                read_buff = &mut read_buff[read..];
+                s.service();
+            }
+            lights.incoming(&msg_buff);
+        }
 
         let current = my_timer.now();
         let diff = stm32f1xx_hal::time::MicroSeconds::from_ticks(
             current.ticks().wrapping_sub(old.ticks()),
         );
 
-        if diff > stm32f1xx_hal::time::ms(10) {
+        lights.perform_update(diff.ticks() as u64, &mut ws2811);
+
+        if diff > stm32f1xx_hal::time::ms(50) {
             old = current;
         } else {
             continue;
         }
-        // sprintln!("{}  {} \n", current, c % 255);
 
-        if ws2811.is_ready() {
-            set_rgbw(&mut colors, 2);
-            let cu8 = (c % 255) as u8;
-            // set_color(&mut colors, &RGB{r: cu8, g: 0, b: 0});
-            // set_color(&mut colors, &RGB{r: 0, g: cu8, b: 0});
-            // set_color(&mut colors, &RGB{r: 0, g: 0, b: cu8});
-            // let v = current.ticks();
-            c += 1;
-            sprintln!("{}  {} \n", current, c % 255);
-            // sprintln!("c: {}, us: {}, u64: {} \n", clock_ms(), clock_us(), clock_us_u64());
-            set_limit(&mut colors, cu8);
-            // set_limit(&mut colors, 1);
-            filter.apply(&mut colors);
-            ws2811.prepare(&colors);
-            ws2811.update();
-        }
-
-        if led_state {
-            led.set_low();
-        } else {
-            led.set_high();
-        }
-        led_state = !led_state;
-
-        while s.available() {
-            if let Some(v) = s.read() {
-                s.write(&[v - 0x20]);
-            } else {
-                break;
-            }
-        }
+        led.toggle();
     }
 }

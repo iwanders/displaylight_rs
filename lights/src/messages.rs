@@ -218,7 +218,7 @@ impl Message {
 
     pub fn from_bytes(data: &[u8]) -> Option<ReceivedMessage> {
         if data.len() == Self::LENGTH {
-            /// We ensured the length is same as length, so this is safe.
+            // We ensured the length is same as length, so this is safe.
             let msg = unsafe {
                 let rawptr = core::mem::transmute::<*const u8, *const Self>(&data[0] as *const u8);
                 *rawptr

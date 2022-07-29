@@ -89,7 +89,6 @@ type SpiDma = TxDma<Spi<SpiPort, Spi2NoRemap, SpiPins, u8>, DmaType>;
 type TransferType = Transfer<stm32f1xx_hal::dma::R, &'static mut [u8], SpiDma>;
 type StaticBuffer = &'static mut [u8];
 
-
 /// Struct to hold the components if no transfer is ongoing.
 struct Pending {
     spi_dma: SpiDma,

@@ -164,18 +164,26 @@ impl core::fmt::Write for Serial {
     // fn write_char(&mut self, c: char) -> Result { ... }
     // fn write_fmt(&mut self, args: Arguments<'_>) -> Result { ... }
 }
-
 /// Provide a println! macro similar to Rust does, this can be called from anywhere.
+#[cfg(not(test))]
 #[macro_export]
 macro_rules! sprintln {
     () => ($crate::io::print("\n"));
     ($($arg:tt)*) => ({
         use core::fmt::Write;
-        use core::fmt;
-        let mut v = displaylight_fw::serial::Serial::new();
+        let mut v = crate::serial::Serial::new();
         core::fmt::write(&mut v, format_args!($($arg)*)).expect("Error occurred while trying to write in String");
         v.write_str("\n").expect("Shouldn't fail");
     })
+}
+
+#[macro_export]
+#[cfg(test)]
+macro_rules! sprintln {
+    () => (println!());
+    ($($arg:tt)*) => ({
+        println!($($arg)*);
+    });
 }
 
 #[interrupt]
