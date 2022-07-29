@@ -3,7 +3,6 @@ use crate::spi_ws2811::Ws2811SpiDmaDriver;
 use crate::sprintln;
 use crate::types::RGB;
 
-
 pub fn set_rgbw(leds: &mut [RGB], offset: usize) {
     for i in 0..leds.len() {
         let v = (i + offset) % 4;
@@ -31,7 +30,6 @@ pub fn set_limit(leds: &mut [RGB], value: u8) {
     }
 }
 
-
 #[derive(Default)]
 pub struct Lights {
     /// Configuration for the decay and gamma tables.
@@ -58,7 +56,6 @@ pub struct Lights {
 }
 
 impl Lights {
-
     #[cfg(test)]
     pub fn get_leds(&self) -> &[RGB] {
         self.leds
@@ -112,8 +109,7 @@ impl Lights {
                     to_update.copy_from_slice(&color_data.color[..to_update.len()])
                 }
 
-                if (color_data.settings & ColorData::SETTINGS_SHOW_AFTER) != 0
-                {
+                if (color_data.settings & ColorData::SETTINGS_SHOW_AFTER) != 0 {
                     self.needs_update = true;
                 }
             }
@@ -140,9 +136,12 @@ impl Lights {
         }
     }
 
-    pub fn perform_update(&mut self, dt: u64, ws2811: &mut Ws2811SpiDmaDriver) {
+    pub fn clock_update(&mut self, dt: u64) {
         self.current_time = dt + self.current_time;
-        sprintln!("perform_update, time {}", self.current_time);
+        // sprintln!("perform_update, time {}", self.current_time);
+    }
+
+    pub fn perform_update(&mut self, ws2811: &mut Ws2811SpiDmaDriver) {
         self.update_decay();
         if ws2811.is_ready() && self.needs_update {
             ws2811.prepare(&self.leds);
@@ -157,12 +156,73 @@ mod tests {
     #[test]
     fn state_checks() {
         let led_state_msg = [
-            2u8, 0, 0, 0, 15, 0, ColorData::SETTINGS_SHOW_AFTER, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17,
-            18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39,
-            40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56,
+            2u8,
+            0,
+            0,
+            0,
+            15,
+            0,
+            ColorData::SETTINGS_SHOW_AFTER,
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19,
+            20,
+            21,
+            22,
+            23,
+            24,
+            25,
+            26,
+            27,
+            28,
+            29,
+            30,
+            31,
+            32,
+            33,
+            34,
+            35,
+            36,
+            37,
+            38,
+            39,
+            40,
+            41,
+            42,
+            43,
+            44,
+            45,
+            46,
+            47,
+            48,
+            49,
+            50,
+            51,
+            52,
+            53,
+            54,
+            55,
+            56,
         ];
         static mut leds: [RGB; 228] = [RGB::BLACK; 228];
-        let mut lights = Lights::new(unsafe{&mut leds});
+        let mut lights = Lights::new(unsafe { &mut leds });
         lights.incoming(&led_state_msg);
         // println!("Leds: {:?}", lights.get_leds());
         assert_eq!(lights.get_leds()[0], RGB::BLACK);

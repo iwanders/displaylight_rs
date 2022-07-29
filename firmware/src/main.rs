@@ -27,15 +27,14 @@ use stm32f1xx_hal::prelude::*;
 use stm32f1xx_hal::pac::{self};
 use stm32f1xx_hal::usb::Peripheral;
 
-
 use displaylight_fw::lights;
 use displaylight_fw::messages;
 use displaylight_fw::serial;
 use displaylight_fw::spi_ws2811;
 use displaylight_fw::types::RGB;
 
-// use displaylight_fw::sprintln;
 use cortex_m::singleton;
+use displaylight_fw::sprintln;
 
 #[cfg_attr(not(test), entry)]
 fn main() -> ! {
@@ -109,7 +108,12 @@ fn main() -> ! {
     // counter_us: Can wait from 2 μs to 65 ms for 16-bit timer
     // Start something to keep time.
     let mut my_timer = dp.TIM2.counter_us(&clocks);
-    my_timer.start(64.millis()).unwrap();
+
+    // We can't update the clock difference each cycle, as that rounds the millis to zero.
+    let lights_time_update_interval = stm32f1xx_hal::time::ms(10);
+    // Setup the timer with a timer period to wrap around.
+    let timer_period = 64.millis();
+    my_timer.start(timer_period).unwrap();
 
     let mut old = my_timer.now();
 
@@ -143,31 +147,36 @@ fn main() -> ! {
     loop {
         s.service();
 
-        // if s.available() {
-            // let mut msg_buff = [0u8; messages::Message::LENGTH];
-            // let mut read_buff = &mut msg_buff[..];
-            // while !read_buff.is_empty() {
-                // let read = s.read_into(read_buff);
-                // read_buff = &mut read_buff[read..];
-                // s.service();
-            // }
-            // lights.incoming(&msg_buff);
-        // }
+        if s.available() {
+            let mut msg_buff = [0u8; messages::Message::LENGTH];
+            let mut read_buff = &mut msg_buff[..];
+            while !read_buff.is_empty() {
+                let read = s.read_into(read_buff);
+                read_buff = &mut read_buff[read..];
+                s.service();
+            }
+            lights.incoming(&msg_buff);
+        }
 
+        // This uses the timer to update the clock in the lights object every timer interval
+        // it gracefully handles wrap around of the timer as it resets.
         let current = my_timer.now();
         let diff = stm32f1xx_hal::time::MicroSeconds::from_ticks(
-            current.ticks().wrapping_sub(old.ticks()),
+            (((current.ticks() as i64 - old.ticks() as i64) + timer_period.ticks() as i64)
+                % timer_period.ticks() as i64) as u32,
         );
 
-    
-        old = current;
-        lights.perform_update(diff.to_micros() as u64, &mut ws2811);
+        // Finally, if the lights time update interval has passed, update the time for the lights.
+        if diff > lights_time_update_interval {
+            old = current;
+            lights.clock_update(diff.to_micros() as u64);
+            led_toggle_counter = led_toggle_counter + diff;
+        }
 
+        // Always, perform the update.
+        lights.perform_update(&mut ws2811);
 
-        led_toggle_counter =  stm32f1xx_hal::time::MicroSeconds::from_ticks(
-            led_toggle_counter.ticks().wrapping_sub(diff.ticks()),
-        );
-
+        // Toggle the builtin led to indicate we didn't panic.
         if led_toggle_counter > stm32f1xx_hal::time::ms(50) {
             led_toggle_counter = stm32f1xx_hal::time::MicroSeconds::from_ticks(0);
         } else {
