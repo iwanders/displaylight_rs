@@ -123,8 +123,27 @@ impl Lights {
         }
     }
 
+    fn update_decay(&mut self) {
+        // Determine if we should decay;
+        if (self.current_time - self.last_msg) > (self.config.decay_time_delay_ms * 1000) as u64 {
+            if (self.current_time - self.last_decay) > (self.config.decay_interval_us as u64) {
+                self.last_decay = self.current_time;
+                // perform decay.
+                let sub_value = self.config.decay_amount;
+                for v in self.leds.iter_mut() {
+                    v.r = v.r.saturating_sub(sub_value as u8);
+                    v.g = v.g.saturating_sub(sub_value as u8);
+                    v.b = v.b.saturating_sub(sub_value as u8);
+                }
+                // sprintln!("Subtract, time {}", self.current_time);
+            }
+        }
+    }
+
     pub fn perform_update(&mut self, dt: u64, ws2811: &mut Ws2811SpiDmaDriver) {
         self.current_time = dt + self.current_time;
+        sprintln!("perform_update, time {}", self.current_time);
+        self.update_decay();
         if ws2811.is_ready() && self.needs_update {
             ws2811.prepare(&self.leds);
             ws2811.update();

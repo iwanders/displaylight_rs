@@ -138,31 +138,38 @@ fn main() -> ! {
     };
 
     let mut s = serial::Serial::init(usb);
-
+    let mut led_toggle_counter: _ = stm32f1xx_hal::time::MicroSeconds::from_ticks(0);
 
     loop {
         s.service();
 
-        if s.available() {
-            let mut msg_buff = [0u8; messages::Message::LENGTH];
-            let mut read_buff = &mut msg_buff[..];
-            while !read_buff.is_empty() {
-                let read = s.read_into(read_buff);
-                read_buff = &mut read_buff[read..];
-                s.service();
-            }
-            lights.incoming(&msg_buff);
-        }
+        // if s.available() {
+            // let mut msg_buff = [0u8; messages::Message::LENGTH];
+            // let mut read_buff = &mut msg_buff[..];
+            // while !read_buff.is_empty() {
+                // let read = s.read_into(read_buff);
+                // read_buff = &mut read_buff[read..];
+                // s.service();
+            // }
+            // lights.incoming(&msg_buff);
+        // }
 
         let current = my_timer.now();
         let diff = stm32f1xx_hal::time::MicroSeconds::from_ticks(
             current.ticks().wrapping_sub(old.ticks()),
         );
 
-        lights.perform_update(diff.ticks() as u64, &mut ws2811);
+    
+        old = current;
+        lights.perform_update(diff.to_micros() as u64, &mut ws2811);
 
-        if diff > stm32f1xx_hal::time::ms(50) {
-            old = current;
+
+        led_toggle_counter =  stm32f1xx_hal::time::MicroSeconds::from_ticks(
+            led_toggle_counter.ticks().wrapping_sub(diff.ticks()),
+        );
+
+        if led_toggle_counter > stm32f1xx_hal::time::ms(50) {
+            led_toggle_counter = stm32f1xx_hal::time::MicroSeconds::from_ticks(0);
         } else {
             continue;
         }
