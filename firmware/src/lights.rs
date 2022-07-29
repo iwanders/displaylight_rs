@@ -94,13 +94,13 @@ impl Lights {
 
                 // set all with the first pixel?
                 if (color_data.settings & ColorData::SETTINGS_SET_ALL) != 0 {
-                    self.leds.fill(color_data.color[0]);
+                    self.leds[self.led_offset..].fill(color_data.color[0]);
                 } else {
                     // Apply the gamma filters;
                     self.gamma.apply(&mut color_data.color);
 
                     // Add the sacrificial led offset.
-                    color_data.offset = color_data.offset + self.led_offset;
+                    color_data.offset = color_data.offset + self.led_offset as u16;
 
                     // Copy to the appropriate section of the led string.
                     let start = core::cmp::min(color_data.offset as usize, self.leds.len());

@@ -84,7 +84,7 @@ impl Lights {
                 0
             };
             let mut colors: [RGB; ColorData::LEDS_PER_MESSAGE] = Default::default();
-            for c in 0..ColorData::LEDS_PER_MESSAGE {
+            for c in 0..std::cmp::min(pixels.len(), ColorData::LEDS_PER_MESSAGE) {
                 colors[c].r = (chunk[c].r as f32 * self.limit_factor) as u8;
                 colors[c].g = (chunk[c].g as f32 * self.limit_factor) as u8;
                 colors[c].b = (chunk[c].b as f32 * self.limit_factor) as u8;

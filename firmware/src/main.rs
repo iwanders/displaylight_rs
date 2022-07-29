@@ -87,7 +87,8 @@ fn main() -> ! {
     let dma = dp.DMA1.split();
 
     const REAL_LED_COUNT: usize = 228;
-    const LEDS: usize = REAL_LED_COUNT + 1; // one sacrificial led.
+    const LED_OFFSET: usize = 1; // the sacrificial led
+    const LEDS: usize = REAL_LED_COUNT + LED_OFFSET; // one sacrificial led.
     const BUFFER_SIZE: usize = spi_ws2811::Ws2811SpiDmaDriver::calculate_buffer_size(LEDS);
 
     // Create the led buffer, this is moved to the spi ws2811 driver.
@@ -102,8 +103,7 @@ fn main() -> ! {
     ws2811.update();
 
     // Create the lights struct.
-    const led_offset: usize = 1; // the sacrificial led
-    let mut lights = lights::Lights::new(colors, led_offset);
+    let mut lights = lights::Lights::new(colors, LED_OFFSET);
 
     // counter_ms: Can wait from 2 ms to 65 sec for 16-bit timer
     // counter_us: Can wait from 2 μs to 65 ms for 16-bit timer
