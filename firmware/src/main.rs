@@ -145,7 +145,7 @@ fn main() -> ! {
             while !read_buff.is_empty() {
                 let read = s.read_into(read_buff);
                 read_buff = &mut read_buff[read..];
-                s.service();  // Also service the port in this loop.
+                s.service(); // Also service the port in this loop.
             }
             lights.incoming(&msg_buff);
         }
@@ -157,7 +157,6 @@ fn main() -> ! {
             (((current.ticks() as i64 - old.ticks() as i64) + timer_period.ticks() as i64)
                 % timer_period.ticks() as i64) as u32,
         );
-
 
         // Finally, if the lights time update interval has passed, update the time for the lights.
         // This is only done periodically to avoid the difference rounding to zero.

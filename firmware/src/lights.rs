@@ -57,7 +57,6 @@ pub struct Lights {
 }
 
 impl Lights {
-
     /// Test method that allows inspecting the leds.
     #[cfg(test)]
     pub fn get_leds(&self) -> &[RGB] {
@@ -121,9 +120,16 @@ impl Lights {
             }
             ReceivedMessage::Config(config) => {
                 // Only update the gamma tables if they changed.
-                if (self.config.gamma_r != config.gamma_r) || (self.config.gamma_g != config.gamma_g) || (self.config.gamma_b != config.gamma_b) {
+                if (self.config.gamma_r != config.gamma_r)
+                    || (self.config.gamma_g != config.gamma_g)
+                    || (self.config.gamma_b != config.gamma_b)
+                {
                     // Calculating the gamma tables is expensive, but should only need to happen once.
-                    self.gamma = crate::gamma::Gamma::generate(self.config.gamma_r, self.config.gamma_g, self.config.gamma_b);
+                    self.gamma = crate::gamma::Gamma::generate(
+                        self.config.gamma_r,
+                        self.config.gamma_g,
+                        self.config.gamma_b,
+                    );
                     self.needs_update = true;
                 }
                 self.config = config;
@@ -171,74 +177,14 @@ mod tests {
     use super::*;
     #[test]
     fn state_checks() {
+        const ssa: u8 = ColorData::SETTINGS_SHOW_AFTER;
         let led_state_msg = [
-            2u8,
-            0,
-            0,
-            0,
-            15,
-            0,
-            ColorData::SETTINGS_SHOW_AFTER,
-            0,
-            1,
-            2,
-            3,
-            4,
-            5,
-            6,
-            7,
-            8,
-            9,
-            10,
-            11,
-            12,
-            13,
-            14,
-            15,
-            16,
-            17,
-            18,
-            19,
-            20,
-            21,
-            22,
-            23,
-            24,
-            25,
-            26,
-            27,
-            28,
-            29,
-            30,
-            31,
-            32,
-            33,
-            34,
-            35,
-            36,
-            37,
-            38,
-            39,
-            40,
-            41,
-            42,
-            43,
-            44,
-            45,
-            46,
-            47,
-            48,
-            49,
-            50,
-            51,
-            52,
-            53,
-            54,
-            55,
-            56,
+            2u8, 0, 0, 0, 15, 0, ssa, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17,
+            18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39,
+            40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56,
         ];
         static mut leds: [RGB; 228] = [RGB::BLACK; 228];
-        let mut lights = Lights::new(unsafe { &mut leds });
+        let mut lights = Lights::new(unsafe { &mut leds }, 0);
         lights.incoming(&led_state_msg);
         // println!("Leds: {:?}", lights.get_leds());
         assert_eq!(lights.get_leds()[0], RGB::BLACK);

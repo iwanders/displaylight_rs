@@ -24,7 +24,7 @@ const fn create_linear() -> [u8; 256] {
 }
 
 // Looks like nostd doesn't have powf.
-fn create_exponential(exponent: f32) ->  [u8; 256] {
+fn create_exponential(exponent: f32) -> [u8; 256] {
     let mut lookup = [0; 256];
     let mut i = 0usize;
     while i < 256 {
