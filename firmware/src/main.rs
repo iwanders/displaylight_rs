@@ -1,18 +1,9 @@
-//! This example is a mix of:
-//! https://github.com/stm32-rs/stm32f1xx-hal/blob/f9b24f4d9bac7fc3c93764bd295125800944f53b/examples/blinky.rs
-//! and
-//! https://github.com/stm32-rs/stm32f1xx-hal/blob/f9b24f4d9bac7fc3c93764bd295125800944f53b/examples/usb_serial.rs
-//!
-//! This assumes that a LED is connected to pc13 as is the case on the blue pill board.
-//!
-//! Note: Without additional hardware, PC13 should not be used to drive an LED, see page 5.1.2 of
-//! the reference manual for an explanation. This is not an issue on the blue pill.
-
+// This started as the following examples;
+// https://github.com/stm32-rs/stm32f1xx-hal/blob/f9b24f4d9bac7fc3c93764bd295125800944f53b/examples/blinky.rs
+// https://github.com/stm32-rs/stm32f1xx-hal/blob/f9b24f4d9bac7fc3c93764bd295125800944f53b/examples/usb_serial.rs
 // https://github.com/adamgreig/ledeaf/blob/fbfed437c77f9bc4d83ea9fae4cee4e107af2e15/firmware/src/main.rs
 // https://github.com/thalesfragoso/keykey/blob/master/keykey/Cargo.toml
 // https://github.com/rtic-rs/cortex-m-rtic
-
-// #![deny(unsafe_code)]
 
 #![cfg_attr(not(test), no_std)]
 #![cfg_attr(not(test), no_main)]
@@ -34,7 +25,7 @@ use displaylight_fw::spi_ws2811;
 use displaylight_fw::types::RGB;
 
 use cortex_m::singleton;
-use displaylight_fw::sprintln;
+// use displaylight_fw::sprintln;
 
 #[cfg_attr(not(test), entry)]
 fn main() -> ! {
@@ -43,10 +34,6 @@ fn main() -> ! {
     // Get access to the device specific peripherals from the peripheral access crate
     let dp = pac::Peripherals::take().unwrap();
 
-    // Configure the syst timer to trigger an update every second
-    // let mut timer = Timer::syst(cp.SYST, &clocks).counter_hz();
-    // timer.start(5.Hz()).unwrap();
-
     // Take ownership over the raw flash and rcc devices and convert them into the corresponding
     // HAL structs
     let mut flash = dp.FLASH.constrain();
@@ -54,7 +41,6 @@ fn main() -> ! {
 
     // Freeze the configuration of all the clocks in the system and store the frozen frequencies in
     // `clocks`
-    // let clocks = rcc.cfgr.freeze(&mut flash.acr);
     // Set a real clock that allows usb.
     let clocks = rcc
         .cfgr
@@ -64,13 +50,6 @@ fn main() -> ! {
         .freeze(&mut flash.acr);
 
     assert!(clocks.usbclk_valid());
-
-    // Acquire the GPIOC peripheral
-    let mut gpioc = dp.GPIOC.split();
-
-    // Configure gpio C pin 13 as a push-pull output. The `crh` register is passed to the function
-    // in order to configure the port. For pins 0-7, crl should be passed instead.
-    let mut led = gpioc.pc13.into_push_pull_output(&mut gpioc.crh);
 
     // spi on bus B
     let mut gpiob = dp.GPIOB.split();
@@ -82,6 +61,7 @@ fn main() -> ! {
         stm32f1xx_hal::spi::NoMiso,
         gpiob.pb15.into_alternate_push_pull(&mut gpiob.crh),
     );
+
     // Set up the DMA device
     let dma = dp.DMA1.split();
 
@@ -96,12 +76,13 @@ fn main() -> ! {
     // Create the led color buffer, this allows updating the driver from this.
     let colors = singleton!(: [RGB; LEDS] = [RGB::BLACK; LEDS]).unwrap();
 
+    // Finally, create the led management using the SPI bus and dma channel.
     let mut ws2811 =
         spi_ws2811::Ws2811SpiDmaDriver::new(dp.SPI2, pins, clocks, dma.5, &mut buf[..]);
     ws2811.prepare(colors);
-    ws2811.update();
+    ws2811.update(); // Turn all leds off.
 
-    // Create the lights struct.
+    // Create the lights manager
     let mut lights = lights::Lights::new(colors, LED_OFFSET);
 
     // counter_ms: Can wait from 2 ms to 65 sec for 16-bit timer
@@ -115,11 +96,8 @@ fn main() -> ! {
     let timer_period = 64.millis();
     my_timer.start(timer_period).unwrap();
 
+    // Keep track of the old time.
     let mut old = my_timer.now();
-
-    // Create something that can perform delays.
-    // let mut delay_clock = dp.TIM3.delay_us(&clocks);
-    // delay_clock.delay_ms(100u16);
 
     // Setup usb serial
     let mut gpioa = dp.GPIOA.split();
@@ -141,19 +119,33 @@ fn main() -> ! {
         pin_dp: usb_dp,
     };
 
+    // With usb setup, the serial port handler can be setup;
     let mut s = serial::Serial::init(usb);
+
+    // Setup the led;
+    // Acquire the GPIOC peripheral
+    let mut gpioc = dp.GPIOC.split();
+
+    // Configure gpio C pin 13 as a push-pull output. The `crh` register is passed to the function
+    // in order to configure the port. For pins 0-7, crl should be passed instead.
+    let mut led = gpioc.pc13.into_push_pull_output(&mut gpioc.crh);
+
+    // Counter to toggle the led.
     let mut led_toggle_counter: _ = stm32f1xx_hal::time::MicroSeconds::from_ticks(0);
 
     loop {
+        // Service the serial port.
         s.service();
 
+        // If there are bytes on the serial port to read, consume them all until we have a full
+        // message.
         if s.available() {
             let mut msg_buff = [0u8; messages::Message::LENGTH];
             let mut read_buff = &mut msg_buff[..];
             while !read_buff.is_empty() {
                 let read = s.read_into(read_buff);
                 read_buff = &mut read_buff[read..];
-                s.service();
+                s.service();  // Also service the port in this loop.
             }
             lights.incoming(&msg_buff);
         }
@@ -168,32 +160,20 @@ fn main() -> ! {
 
 
         // Finally, if the lights time update interval has passed, update the time for the lights.
+        // This is only done periodically to avoid the difference rounding to zero.
         if diff > lights_time_update_interval {
             old = current;
             lights.clock_update(diff.to_micros() as u64);
             led_toggle_counter = led_toggle_counter + diff;
         }
 
-        // Always, perform the update.
+        // Always, perform the update for the light manager.
         lights.perform_update(&mut ws2811);
 
-        // Toggle the builtin led to indicate we didn't panic.
+        // Toggle the builtin led to indicate we lock up or panic.
         if led_toggle_counter > stm32f1xx_hal::time::ms(50) {
             led_toggle_counter = stm32f1xx_hal::time::MicroSeconds::from_ticks(0);
-        } else {
-            continue;
+            led.toggle();
         }
-
-
-        // let start = my_timer.now();
-        // let g = displaylight_fw::gamma::Gamma::generate(1.3, 1.6, 2.0);
-        // sprintln!("g: {:?}", g);
-        // let end = my_timer.now();
-        // sprintln!("took: {:?}", stm32f1xx_hal::time::MicroSeconds::from_ticks(
-            // end.ticks().wrapping_sub(start.ticks())
-        // ));
-
-
-        led.toggle();
     }
 }

@@ -30,6 +30,7 @@ pub fn set_limit(leds: &mut [RGB], value: u8) {
     }
 }
 
+/// Object to manage the led lights, keeps the internal state, manages the gamma filters and decay.
 #[derive(Default)]
 pub struct Lights {
     /// Configuration for the decay and gamma tables.
@@ -56,27 +57,34 @@ pub struct Lights {
 }
 
 impl Lights {
+
+    /// Test method that allows inspecting the leds.
     #[cfg(test)]
     pub fn get_leds(&self) -> &[RGB] {
         self.leds
     }
 
+    /// Create a new lights object, taking a RGB buffer and offset from where the real leds start.
+    /// This offset is zero if all leds are to be used, one if there's a sacrificial led to do the
+    /// voltage conversion.
     pub fn new(leds: &'static mut [RGB], led_offset: usize) -> Self {
+        let config = Config::default();
+        let gamma = crate::gamma::Gamma::generate(config.gamma_r, config.gamma_g, config.gamma_b);
         Lights {
             leds,
             led_offset,
-            gamma: crate::gamma::Gamma::correction(),
+            gamma,
+            config,
             ..Default::default()
         }
     }
 
-    /// Intereprets Message::LENGTH bytes.
+    /// Interprets Message::LENGTH bytes from the slice as a message.
     pub fn incoming(&mut self, data_bytes: &[u8]) {
         assert_eq!(data_bytes.len(), Message::LENGTH);
         let msg = Message::from_bytes(data_bytes);
         if msg.is_none() {
-            // booo.
-            sprintln!("Got bad payload: {:?}", data_bytes);
+            sprintln!("Got bad payload: {:?}", data_bytes); // booo.
             return;
         }
         let msg = msg.unwrap();
@@ -93,9 +101,6 @@ impl Lights {
                 if (color_data.settings & ColorData::SETTINGS_SET_ALL) != 0 {
                     self.leds[self.led_offset..].fill(color_data.color[0]);
                 } else {
-                    // Apply the gamma filters;
-                    // self.gamma.apply(&mut color_data.color);
-
                     // Add the sacrificial led offset.
                     color_data.offset = color_data.offset + self.led_offset as u16;
 
@@ -109,14 +114,19 @@ impl Lights {
                     to_update.copy_from_slice(&color_data.color[..to_update.len()])
                 }
 
+                // If we should set the leds, set the update flag.
                 if (color_data.settings & ColorData::SETTINGS_SHOW_AFTER) != 0 {
                     self.needs_update = true;
                 }
             }
             ReceivedMessage::Config(config) => {
+                // Only update the gamma tables if they changed.
+                if (self.config.gamma_r != config.gamma_r) || (self.config.gamma_g != config.gamma_g) || (self.config.gamma_b != config.gamma_b) {
+                    // Calculating the gamma tables is expensive, but should only need to happen once.
+                    self.gamma = crate::gamma::Gamma::generate(self.config.gamma_r, self.config.gamma_g, self.config.gamma_b);
+                    self.needs_update = true;
+                }
                 self.config = config;
-                self.gamma = crate::gamma::Gamma::generate(self.config.gamma_r, self.config.gamma_g, self.config.gamma_b);
-                self.needs_update = true;
             }
         }
     }
@@ -140,7 +150,6 @@ impl Lights {
 
     pub fn clock_update(&mut self, dt: u64) {
         self.current_time = dt + self.current_time;
-        // sprintln!("perform_update, time {}", self.current_time);
     }
 
     pub fn perform_update(&mut self, ws2811: &mut Ws2811SpiDmaDriver) {
