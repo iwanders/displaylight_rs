@@ -12,11 +12,15 @@ fn main() -> Result<(), Box<dyn Error>> {
     let port = port.unwrap();
 
     let mut control = lights::Lights::new(&port)?;
-    control.set_limit_factor(0.1);
+    control.set_limit_factor(1.0);
     control.fill(0, 0, 0)?;
 
     let config = lights::Config {
         decay_amount: 1,
+        decay_interval_us: 10_000,
+        gamma_r: 1.0,
+        gamma_g: 1.3,
+        gamma_b: 1.6,
         ..Default::default()
     };
     control.set_config(&config)?;
@@ -32,9 +36,9 @@ fn main() -> Result<(), Box<dyn Error>> {
         let mut leds = [RGB::default(); MAX_LEDS];
         let index = i % (MAX_LEDS - 1);
         leds[index] = RGB {
-            r: 255,
-            g: 255,
-            b: 255,
+            r: 128,
+            g: 128,
+            b: 128,
         };
         control.set_leds(&leds)?;
         thread::sleep(time::Duration::from_millis(10));

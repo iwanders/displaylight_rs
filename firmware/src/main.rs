@@ -34,7 +34,7 @@ use displaylight_fw::spi_ws2811;
 use displaylight_fw::types::RGB;
 
 use cortex_m::singleton;
-// use displaylight_fw::sprintln;
+use displaylight_fw::sprintln;
 
 #[cfg_attr(not(test), entry)]
 fn main() -> ! {
@@ -166,6 +166,7 @@ fn main() -> ! {
                 % timer_period.ticks() as i64) as u32,
         );
 
+
         // Finally, if the lights time update interval has passed, update the time for the lights.
         if diff > lights_time_update_interval {
             old = current;
@@ -182,6 +183,16 @@ fn main() -> ! {
         } else {
             continue;
         }
+
+
+        // let start = my_timer.now();
+        // let g = displaylight_fw::gamma::Gamma::generate(1.3, 1.6, 2.0);
+        // sprintln!("g: {:?}", g);
+        // let end = my_timer.now();
+        // sprintln!("took: {:?}", stm32f1xx_hal::time::MicroSeconds::from_ticks(
+            // end.ticks().wrapping_sub(start.ticks())
+        // ));
+
 
         led.toggle();
     }

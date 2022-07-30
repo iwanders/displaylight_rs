@@ -115,6 +115,8 @@ impl Lights {
             }
             ReceivedMessage::Config(config) => {
                 self.config = config;
+                self.gamma = crate::gamma::Gamma::generate(self.config.gamma_r, self.config.gamma_g, self.config.gamma_b);
+                self.needs_update = true;
             }
         }
     }
@@ -124,6 +126,7 @@ impl Lights {
         if (self.current_time - self.last_msg) > (self.config.decay_time_delay_ms * 1000) as u64 {
             if (self.current_time - self.last_decay) > (self.config.decay_interval_us as u64) {
                 self.last_decay = self.current_time;
+                self.needs_update = true;
                 // perform decay.
                 let sub_value = self.config.decay_amount;
                 for v in self.leds.iter_mut() {
@@ -144,10 +147,11 @@ impl Lights {
         self.update_decay();
         if ws2811.is_ready() && self.needs_update {
             ws2811.prepare_filter(&self.leds, &|rgb| {
-                let v = rgb;
-                self.gamma.apply(&mut [v]);
-                v
+                let mut v = [rgb; 1];
+                self.gamma.apply(&mut v);
+                v[0]
             });
+            self.needs_update = false;
             ws2811.update();
         }
     }

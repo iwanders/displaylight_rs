@@ -10,7 +10,7 @@ license = "MIT OR Apache-2.0"
 embedded-hal = "0.2.7"
 
 nb = "1"
-
+libm = "0.2.3"
 
 
 cortex-m-rt = "0.7.1"

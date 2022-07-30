@@ -201,9 +201,9 @@ impl Ws2811SpiDmaDriver {
     pub fn prepare_filter(&mut self, colors: &[RGB], filter: &dyn Fn(RGB) -> RGB) {
         if let Some(pending) = &mut self.pending {
             for (i, rgb) in colors.iter().enumerate() {
-                let rgb = filter(*rgb);
+                let filtered_rgb = filter(*rgb);
                 convert_color_to_buffer(
-                    &[rgb],
+                    &[filtered_rgb],
                     &mut pending.buffer[(Self::BYTES_PER_LED * (Self::PREAMBLE_COUNT + i))
                         ..((Self::PREAMBLE_COUNT + i + 1) * Self::BYTES_PER_LED)],
                 );

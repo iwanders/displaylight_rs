@@ -1,6 +1,7 @@
 use crate::types::RGB;
 
 /// Gamma tables to map ws2811 rgb leds properly.
+#[derive(Debug, Clone, Copy)]
 pub struct Gamma {
     gamma_r: [u8; 256],
     gamma_g: [u8; 256],
@@ -23,17 +24,19 @@ const fn create_linear() -> [u8; 256] {
 }
 
 // Looks like nostd doesn't have powf.
-/*
 fn create_exponential(exponent: f32) ->  [u8; 256] {
     let mut lookup = [0; 256];
     let mut i = 0usize;
     while i < 256 {
-        let v = ((i as f32) / 255.0).powf(exponent) * 256.0 + 0.5;
+        let r = (i as f32) / 255.0;
+        let powered = libm::powf(r, exponent);
+        let v = powered * 255.0 + 0.5;
         lookup[i] = v as u8;
         i += 1;
     }
     lookup
 }
+/*
 */
 
 // [int((i / 255.0)**1.0 * 255.0 + 0.5 ) for i in range(256)]
@@ -105,6 +108,14 @@ impl Gamma {
             gamma_r: create_exponential_gamma_1_0(),
             gamma_g: create_exponential_gamma_1_3(),
             gamma_b: create_exponential_gamma_1_6(),
+        }
+    }
+
+    pub fn generate(r_gamma: f32, g_gamma: f32, b_gamma: f32) -> Self {
+        Gamma {
+            gamma_r: create_exponential(r_gamma),
+            gamma_g: create_exponential(g_gamma),
+            gamma_b: create_exponential(b_gamma),
         }
     }
 
