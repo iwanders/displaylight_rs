@@ -34,7 +34,7 @@ use displaylight_fw::spi_ws2811;
 use displaylight_fw::types::RGB;
 
 use cortex_m::singleton;
-use displaylight_fw::sprintln;
+// use displaylight_fw::sprintln;
 
 #[cfg_attr(not(test), entry)]
 fn main() -> ! {

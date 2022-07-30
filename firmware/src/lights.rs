@@ -94,7 +94,7 @@ impl Lights {
                     self.leds[self.led_offset..].fill(color_data.color[0]);
                 } else {
                     // Apply the gamma filters;
-                    self.gamma.apply(&mut color_data.color);
+                    // self.gamma.apply(&mut color_data.color);
 
                     // Add the sacrificial led offset.
                     color_data.offset = color_data.offset + self.led_offset as u16;
@@ -131,7 +131,6 @@ impl Lights {
                     v.g = v.g.saturating_sub(sub_value as u8);
                     v.b = v.b.saturating_sub(sub_value as u8);
                 }
-                // sprintln!("Subtract, time {}", self.current_time);
             }
         }
     }
@@ -144,7 +143,11 @@ impl Lights {
     pub fn perform_update(&mut self, ws2811: &mut Ws2811SpiDmaDriver) {
         self.update_decay();
         if ws2811.is_ready() && self.needs_update {
-            ws2811.prepare(&self.leds);
+            ws2811.prepare_filter(&self.leds, &|rgb| {
+                let v = rgb;
+                self.gamma.apply(&mut [v]);
+                v
+            });
             ws2811.update();
         }
     }

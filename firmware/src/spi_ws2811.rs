@@ -196,6 +196,20 @@ impl Ws2811SpiDmaDriver {
             );
         }
     }
+
+    /// Prepare with a filter to be applied on each RGB value.
+    pub fn prepare_filter(&mut self, colors: &[RGB], filter: &dyn Fn(RGB) -> RGB) {
+        if let Some(pending) = &mut self.pending {
+            for (i, rgb) in colors.iter().enumerate() {
+                let rgb = filter(*rgb);
+                convert_color_to_buffer(
+                    &[rgb],
+                    &mut pending.buffer[(Self::BYTES_PER_LED * (Self::PREAMBLE_COUNT + i))
+                        ..((Self::PREAMBLE_COUNT + i + 1) * Self::BYTES_PER_LED)],
+                );
+            }
+        }
+    }
 }
 
 // Using a denser (6Mhz but with 2 bits per byte) doesn't work unfortunately;
