@@ -36,6 +36,7 @@ fn create_exponential(exponent: f32) ->  [u8; 256] {
 }
 */
 
+// [int((i / 255.0)**1.0 * 255.0 + 0.5 ) for i in range(256)]
 const fn create_exponential_gamma_1_0() -> [u8; 256] {
     [
         0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
