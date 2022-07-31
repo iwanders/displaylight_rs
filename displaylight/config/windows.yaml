@@ -3,7 +3,7 @@
 rate: 60.0
 
 # The serial port to connect to.
-port: COM5
+port: COM7
 
 # Vertical depth of zones used for sampling.
 vertical_depth: 200

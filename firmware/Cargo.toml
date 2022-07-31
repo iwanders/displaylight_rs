@@ -1,0 +1,37 @@
+[package]
+authors = ["Ivor Wanders"]
+edition = "2021"
+readme = "README.md"
+name = "displaylight_fw"
+version = "0.1.0"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+embedded-hal = "0.2.7"
+
+nb = "1"
+libm = "0.2.3"
+
+cortex-m-rt = "0.7.1"
+panic-halt = "0.2.0"
+
+# Serial
+usb-device = "0.2.8"
+usbd-serial = "0.1.1"
+
+[dependencies.cortex-m]
+version = "0.7.5"
+features = ["cm7-r0p1"]
+
+[dependencies.stm32f1xx-hal]
+version = "0.9.0"
+features = ["rt", "stm32f103", "medium"]
+
+[profile.dev]
+incremental = false
+codegen-units = 1
+
+[profile.release]
+codegen-units = 1
+debug = true
+lto = true

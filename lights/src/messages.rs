@@ -15,7 +15,7 @@ struct RGB
 */
 
 #[repr(C, packed)]
-#[derive(Default, Clone, Copy, Debug)]
+#[derive(Default, Clone, Copy, Debug, PartialEq)]
 /// Struct to represent the RGB state of a single led.
 pub struct RGB {
     pub r: u8,
@@ -32,7 +32,7 @@ enum MsgType : uint8_t
 };
 
 */
-/// MsgType container to retrieve constants from. Is an enum on the C++ sid.
+/// MsgType container to retrieve constants from. Is an enum on the C++ side.
 pub struct MsgType {}
 impl MsgType {
     pub const NOP: u8 = 0;
@@ -59,7 +59,7 @@ struct Config
 };
 */
 #[repr(C, packed)]
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 /// Config struct to change properties on the microcontroller.
 pub struct Config {
     /// If there has been activity, decay won't take place for decay_time_delay_ms milliseconds.
@@ -107,7 +107,7 @@ struct ColorData
 /// The number of led colors that can be sent in a single message.
 const LEDS_PER_MESSAGE: usize = 19;
 #[repr(C, packed)]
-#[derive(Default, Clone, Copy, Debug)]
+#[derive(Default, Clone, Copy, Debug, PartialEq)]
 /// Struct to contain the color data for pixels as sent in a message.
 pub struct ColorData {
     pub offset: u16,
@@ -152,8 +152,8 @@ impl Default for Payload {
         Payload { raw: [0; 60] }
     }
 }
-use std::fmt;
-use std::fmt::Debug;
+use core::fmt;
+use core::fmt::Debug;
 impl Debug for Payload {
     /// Debug formatter for the payload always uses raw.
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -174,44 +174,78 @@ impl Debug for Message {
     /// Format a human readable version of this message. Interpreting the msg_type field.
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.msg_type {
-            MsgType::NOP => f
-                .debug_struct("Message")
-                .field("msg_type", &"nop".to_owned())
-                .finish(),
+            MsgType::NOP => f.debug_struct("Message").field("msg_type", &"nop").finish(),
             MsgType::CONFIG => f
                 .debug_struct("Message")
-                .field("msg_type", &"config".to_owned())
+                .field("msg_type", &"config")
                 .field("config", unsafe { &self.payload.config })
                 .finish(),
             MsgType::COLOR => f
                 .debug_struct("Message")
-                .field("msg_type", &"color".to_owned())
+                .field("msg_type", &"color")
                 .field("config", unsafe { &self.payload.color })
                 .finish(),
             _ => f
                 .debug_struct("Message")
-                .field("msg_type", &"unknown".to_owned())
+                .field("msg_type", &"unknown")
                 .finish(),
         }
     }
 }
 
+pub enum ReceivedMessage {
+    Nop,
+    Config(Config),
+    ColorData(ColorData),
+}
+
 impl Message {
-    pub fn as_bytes(&self) -> [u8; 64] {
+    pub const LENGTH: usize = 64;
+    pub fn as_bytes(&self) -> [u8; Self::LENGTH] {
         // Lets just do this here, alternatively we could pull in https://github.com/iwanders/huntsman/tree/master/struct_helper
-        let mut res = [0u8; 64];
+        let mut res = [0u8; Self::LENGTH];
         unsafe {
             let rawptr = self as *const Self;
             let byte_ptr = rawptr as *const u8; // the reinterpret_cast
                                                 // return a bounded slice of bytes for inspection.
-            res[0..64].clone_from_slice(std::slice::from_raw_parts(
+            res[0..Self::LENGTH].clone_from_slice(core::slice::from_raw_parts(
                 byte_ptr,
-                std::mem::size_of::<Self>(),
+                core::mem::size_of::<Self>(),
             ));
         }
         res
     }
+
+    pub fn from_bytes(data: &[u8]) -> Option<ReceivedMessage> {
+        if data.len() == Self::LENGTH {
+            // We ensured the length is same as length, so this is safe.
+            let msg = unsafe {
+                let rawptr = core::mem::transmute::<*const u8, *const Self>(&data[0] as *const u8);
+                *rawptr
+            };
+            match msg.msg_type {
+                MsgType::NOP => {
+                    return Some(ReceivedMessage::Nop);
+                }
+                MsgType::CONFIG => {
+                    let config = unsafe { msg.payload.config };
+                    return Some(ReceivedMessage::Config(config));
+                }
+                MsgType::COLOR => {
+                    let config = unsafe { msg.payload.color };
+                    return Some(ReceivedMessage::ColorData(config));
+                }
+                _ => {
+                    return None;
+                }
+            }
+        }
+        None
+    }
 }
+
+// https://users.rust-lang.org/t/ensure-that-struct-t-has-size-n-at-compile-time/61108/4
+const _: () = [(); 1][(core::mem::size_of::<Message>() == Message::LENGTH) as usize ^ 1];
 
 #[cfg(test)]
 mod tests {
@@ -236,6 +270,14 @@ mod tests {
         println!("{:?}", m);
         println!("{:?}", b);
         assert_eq!(b, expected);
+        let p = Message::from_bytes(&expected);
+        assert!(p.is_some());
+        let msg = p.unwrap();
+        if let ReceivedMessage::Config(config) = msg {
+            assert_eq!(config, unsafe { m.payload.config });
+        } else {
+            assert!(false);
+        }
     }
 
     #[test]
@@ -261,5 +303,14 @@ mod tests {
         println!("{:?}", msg);
         println!("{:?}", b);
         assert_eq!(b, expected);
+
+        let p = Message::from_bytes(&expected);
+        assert!(p.is_some());
+        let m = p.unwrap();
+        if let ReceivedMessage::ColorData(colors) = m {
+            assert_eq!(colors, unsafe { msg.payload.color });
+        } else {
+            assert!(false);
+        }
     }
 }
