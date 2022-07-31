@@ -1,12 +1,17 @@
 # Displaylight firmware
 
+## Circuit
+The pcb to connect the STM32f103 to the uses a [sacrificial led](https://hackaday.com/2017/01/20/cheating-at-5v-ws2812-control-to-use-a-3-3v-data-line/) to ensure the signal gets converted from 3.3v to 5.0v logic level.
+
+![Image of circuit to connect leds](/firmware/doc/displaylight_pcb.svg "Image of circuit to connect leds").
+
 ## Test
 ```
 cargo t --target x86_64-unknown-linux-gnu
 ```
 
 ## Flash and run
-Run `openocd` in this directory, then;
+Run `openocd` in this directory, then in another terminal
 
 ```
 cargo r --profile firmware
