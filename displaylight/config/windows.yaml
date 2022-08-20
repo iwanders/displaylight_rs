@@ -27,6 +27,14 @@ edge_detection_rectangular_only: true
 # If edge detection is disabled, the full width and height of the image is always used.
 edge_detection_enable: true
 
+# Allowed edge change per second for horizontal direction. Probably want this to roughly account
+# for the aspect ratio of the capture area.
+edge_horizontal_change_per_s: 60.0
+
+# Allowed edge change per second for vertical direction.
+edge_vertical_change_per_s: 30.0
+
+
 # Limiting factor between 0.0 and 1.0, 1.0 allows full brightness. 0.5 specifies half brightness.
 limiting_factor: 0.5
 

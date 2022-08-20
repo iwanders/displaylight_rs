@@ -130,6 +130,68 @@ pub fn find_borders(
     Some(b)
 }
 
+#[derive(Debug, Clone, Copy)]
+/// Struct to smoothly rate limit rectangle size changes.
+pub struct RectangleChangeLimiter {
+    x_min: f32,
+    x_max: f32,
+    y_min: f32,
+    y_max: f32,
+
+    previous_time: std::time::Instant,
+    horizontal_rate_per_s: f32,
+    vertical_rate_per_s: f32,
+}
+
+impl RectangleChangeLimiter {
+    /// Instantiate a new limiter with a horizontal rate limit and vertical rate limit.
+    pub fn new(horizontal_rate_per_s: f32, vertical_rate_per_s: f32) -> Self {
+        RectangleChangeLimiter {
+            x_min: 0.0,
+            x_max: 0.0,
+            y_min: 0.0,
+            y_max: 0.0,
+            previous_time: std::time::Instant::now(),
+            horizontal_rate_per_s,
+            vertical_rate_per_s,
+        }
+    }
+
+    /// Set the current rectangle without rate limiting.
+    pub fn set(&mut self, rectangle: &Rectangle, current: &std::time::Instant) {
+        self.x_min = rectangle.x_min as f32;
+        self.x_max = rectangle.x_max as f32;
+        self.y_min = rectangle.y_min as f32;
+        self.y_max = rectangle.y_max as f32;
+        self.previous_time = *current;
+    }
+
+    /// Update the rectangle with rate limiting.
+    pub fn update(&mut self, rectangle: &Rectangle, current: &std::time::Instant) {
+        let dt = (*current - self.previous_time).as_secs_f32();
+        self.previous_time = *current;
+
+        let dh = dt * self.horizontal_rate_per_s;
+        let dv = dt * self.vertical_rate_per_s;
+
+        self.x_min = self.x_min + (rectangle.x_min as f32 - self.x_min).clamp(-dh, dh);
+        self.x_max = self.x_max + (rectangle.x_max as f32 - self.x_max).clamp(-dh, dh);
+
+        self.y_min = self.y_min + (rectangle.y_min as f32 - self.y_min).clamp(-dv, dv);
+        self.y_max = self.y_max + (rectangle.y_max as f32 - self.y_max).clamp(-dv, dv);
+    }
+
+    /// Return the current rectangle.
+    pub fn rectangle(&self) -> Rectangle {
+        Rectangle {
+            x_min: self.x_min as u32,
+            x_max: self.x_max as u32,
+            y_min: self.y_min as u32,
+            y_max: self.y_max as u32,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -296,5 +358,63 @@ mod tests {
             .write_ppm(&tmp_file("test_only_rectangular2.ppm"))
             .expect("Should succeed.");
         assert!(b.is_none());
+    }
+
+    #[test]
+    fn test_rectangle_limiter() {
+        let mut z = RectangleChangeLimiter::new(10.0, 15.0);
+        let init = Rectangle {
+            x_min: 0,
+            x_max: 100,
+            y_min: 0,
+            y_max: 100,
+        };
+        let t0 = std::time::Instant::now();
+        z.set(&init, &t0);
+
+        // Elapse one second
+        let t1 = t0 + std::time::Duration::from_secs_f32(1.0);
+        let reduced = Rectangle {
+            x_min: 20,
+            x_max: 80,
+            y_min: 20,
+            y_max: 80,
+        };
+        // Update, rate limit should happen with 1s.
+        z.update(&reduced, &t1);
+
+        let r = z.rectangle();
+        assert_eq!(r.x_min, 10);
+        assert_eq!(r.x_max, 90);
+        assert_eq!(r.y_min, 15);
+        assert_eq!(r.y_max, 85);
+
+        // Elapse another second, now it should be fully matching the reduced rectangle.
+        let t2 = t1 + std::time::Duration::from_secs_f32(1.0);
+        z.update(&reduced, &t2);
+        let r = z.rectangle();
+        assert_eq!(r, reduced);
+
+        // Grow the rectangle in size for one second.
+        let t3 = t2 + std::time::Duration::from_secs_f32(1.0);
+        let increased = Rectangle {
+            x_min: 0,
+            x_max: 120,
+            y_min: 0,
+            y_max: 120,
+        };
+        z.update(&increased, &t3);
+        let r = z.rectangle();
+        assert_eq!(r.x_min, 10);
+        assert_eq!(r.x_max, 90);
+        assert_eq!(r.y_min, 5);
+        assert_eq!(r.y_max, 95);
+
+        let t4 = t3 + std::time::Duration::from_secs_f32(1.0);
+        let t5 = t4 + std::time::Duration::from_secs_f32(1.0);
+        let t6 = t5 + std::time::Duration::from_secs_f32(1.0);
+        z.update(&increased, &t6);
+        let r = z.rectangle();
+        assert_eq!(r, increased);
     }
 }
