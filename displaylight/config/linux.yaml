@@ -27,6 +27,8 @@ edge_detection_rectangular_only: false
 # If edge detection is disabled, the full width and height of the image is always used.
 edge_detection_enable: true
 
+edge_detection_change_rate_screenratio_per_s: 0.01
+
 # Limiting factor between 0.0 and 1.0, 1.0 allows full brightness. 0.5 specifies half brightness.
 limiting_factor: 0.5
 

@@ -82,6 +82,8 @@ pub struct Config {
     /// If false, always use the full width and height of the image.
     pub edge_detection_enable: bool,
 
+    pub edge_detection_change_rate_screenratio_per_s: f32,
+
     /// The limiting factor for the overall led brightness.
     pub limiting_factor: f32,
 
@@ -135,6 +137,41 @@ pub struct DisplayLight {
     limiter: rate_limiter::Limiter,
 }
 
+fn limit_border_rate(new_borders: &Option<Rectangle>, old_borders: &Option<Rectangle>, now: &std::time::Instant, border_time: &std::time::Instant, edge_detection_change_rate_screenratio_per_s: f32, resolution: &Resolution) -> Option<Rectangle> {
+    if new_borders.is_none() {
+        return None;
+    }
+    if old_borders.is_none() {
+        return *new_borders;
+    }
+
+    let new_borders = new_borders.as_ref().unwrap();
+    let old_borders = old_borders.as_ref().unwrap();
+
+    let horizontal_rate = edge_detection_change_rate_screenratio_per_s * resolution.width as f32;
+    let vertical_rate = edge_detection_change_rate_screenratio_per_s * resolution.height as f32;
+
+    let dt = (*now - *border_time).as_secs_f32();
+    let dx = horizontal_rate * dt;
+    let dy = vertical_rate * dt;
+
+    println!("---");
+    println!("Old: {old_borders:?}");
+    println!("new_borders: {new_borders:?}");
+    println!("dt {dt:.5}, dx: {dx}, dy: {dy}, horizontal_rate: {horizontal_rate}, vertical_rate: {vertical_rate} ");
+
+    let mut new = *old_borders;
+    use std::cmp::Ord;
+    new.x_min = (old_borders.x_min as i32 + ((new_borders.x_min as f32 - old_borders.x_min as f32) as f32).clamp(-dx, dx) as i32) as u32;
+    new.x_max = (old_borders.x_max as i32 + ((new_borders.x_max as f32 - old_borders.x_max as f32) as f32).clamp(-dx, dx) as i32) as u32;
+    new.y_min = (old_borders.y_min as i32 + ((new_borders.y_min as f32 - old_borders.y_min as f32) as f32).clamp(-dy, dy) as i32) as u32;
+    new.y_max = (old_borders.y_max as i32 + ((new_borders.y_max as f32 - old_borders.y_max as f32) as f32).clamp(-dy, dy) as i32) as u32;
+
+    println!("new: {new:?}");
+
+    Some(new)
+}
+
 impl DisplayLight {
     const MAX_LEDS: usize = 228;
 
@@ -164,6 +201,7 @@ impl DisplayLight {
         // Sampler only updates based on the black border detection, cache it such that we can reuse
         // it.
         let mut cached_sampler: Option<(Rectangle, sampler::Sampler)> = None;
+        let mut border_time = std::time::Instant::now();
 
         // The resolution is used for the capture setup and config retrieval, store the old value.
         let mut cached_resolution: Option<Resolution> = None;
@@ -207,13 +245,20 @@ impl DisplayLight {
             let img = self.grabber.get_image();
 
             // Detect the black borders if we are configured to do so.
-            let borders;
+            let mut borders;
             if self.config.edge_detection_enable {
                 borders = border_detection::find_borders(
                     &*img,
                     self.config.edge_detection_bisect_count,
                     self.config.edge_detection_rectangular_only,
                 );
+                let now = std::time::Instant::now();
+                let mut old_borders = None;
+                if let Some(ref zzz) = cached_sampler {
+                    old_borders = Some(zzz.0);
+                }
+                borders = limit_border_rate(&borders, &old_borders, &now, &border_time, self.config.edge_detection_change_rate_screenratio_per_s, cached_resolution.as_ref().unwrap());
+                // border_time = std::time::Instant::now();
             } else {
                 borders = Some(Rectangle {
                     x_min: 0,
@@ -224,8 +269,10 @@ impl DisplayLight {
             }
 
             // Border size changed, make a new sampler.
-            if let Some(borders) = borders {
+            if let Some(mut borders) = borders {
                 if cached_sampler.is_none() || cached_sampler.as_ref().unwrap().0 != borders {
+                    border_time = std::time::Instant::now();
+                    println!("borders: {borders:?}");
                     // println!("Borders: {:?}", borders);
                     // With the edges known, we can make the zones.
                     let zones = zones::Zones::make_zones(
