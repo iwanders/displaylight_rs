@@ -2,6 +2,7 @@
 use crate::raster_image::RasterImage;
 
 #[derive(Debug, Default, Copy, Clone, Eq, PartialEq)]
+#[repr(C)]
 /// Struct to represent a single pixel.
 pub struct RGB {
     pub r: u8,
@@ -52,13 +53,20 @@ pub struct Resolution {
 
 /// Trait for something that represents an image.
 pub trait Image {
+
     /// Returns the width of the image.
     fn get_width(&self) -> u32;
+
     /// Returns the height of the image.
     fn get_height(&self) -> u32;
 
     /// Returns a specific pixel's value. The x must be less then width, y less than height.
     fn get_pixel(&self, x: u32, y: u32) -> RGB;
+
+    /// Returns the raw data buffer behind this image.
+    fn get_data(&self) -> Option<&[u8]> {
+        None
+    }
 
     /// Dump a ppm file to disk.
     fn write_ppm(&self, filename: &str) -> std::io::Result<()> {

@@ -4,20 +4,36 @@ use crate::interface::*;
 /// Raster image, an image owning all pixels that are in it.
 #[derive(Default)]
 pub struct RasterImage {
-    data: Vec<Vec<RGB>>,
+    width: u32,
+    height: u32,
+    data: Vec<RGB>,
 }
 
 impl RasterImage {
+    fn index(&self, x: u32, y: u32) -> usize {
+        (y * self.width + x) as usize
+    }
+
+    fn data_rgb(&self, x: u32, y: u32) -> &RGB {
+        &self.data[self.index(x, y)]
+    }
+    fn data_rgb_mut(&mut self, x: u32, y: u32) -> &mut RGB {
+        let index = self.index(x, y);
+        &mut self.data[index]
+    }
+
     /// Create a raster image by copying the provided image into the internal storage.
     pub fn new(img: &dyn Image) -> RasterImage {
-        let mut res: RasterImage = Default::default();
         let width = img.get_width();
         let height = img.get_height();
-        res.data.resize(height as usize, Default::default());
-        for y in 0..height {
-            res.data[y as usize].resize(width as usize, Default::default());
-            for x in 0..width {
-                res.data[y as usize][x as usize] = img.get_pixel(x, y);
+        let mut res: RasterImage = RasterImage{
+            width,
+            height,
+            data: vec![Default::default(); height as usize * width as usize],
+        };
+        for y in 0..res.height {
+            for x in 0..res.width {
+                *res.data_rgb_mut(x, y) = img.get_pixel(x, y);
             }
         }
         res
@@ -25,12 +41,14 @@ impl RasterImage {
 
     /// Create a new raster image of specified width and height, filled with the provided color.
     pub fn filled(width: u32, height: u32, color: RGB) -> RasterImage {
-        let mut res: RasterImage = Default::default();
-        res.data.resize(height as usize, Default::default());
+        let mut res: RasterImage = RasterImage{
+            width,
+            height,
+            data: vec![Default::default(); height as usize * width as usize],
+        };
         for y in 0..height {
-            res.data[y as usize].resize(width as usize, Default::default());
             for x in 0..width {
-                res.data[y as usize][x as usize] = color;
+                *res.data_rgb_mut(x, y) = color;
             }
         }
         res
@@ -47,9 +65,19 @@ impl RasterImage {
 
     /// Create a raster image from the provided two dimension vector of pixels.
     pub fn from_2d_vec(data: &[Vec<RGB>]) -> RasterImage {
-        RasterImage {
-            data: data.to_vec(),
+        let width = data.len() as u32;
+        let height = data.get(0).expect("image should have at least one row").len() as u32;
+        let mut res: RasterImage = RasterImage{
+            width,
+            height,
+            data: vec![Default::default(); height as usize * width as usize],
+        };
+        for y in 0..height {
+            for x in 0..width {
+                *res.data_rgb_mut(x, y) = data[y as usize][x as usize];
+            }
         }
+        res
     }
 
     /// Set a specific pixel to the provided color.
@@ -59,7 +87,8 @@ impl RasterImage {
         if x > width || y > height {
             panic!("Trying to set out of bounds ({}, {})", x, y);
         }
-        self.data[y as usize][x as usize] = color;
+        let index = self.index(x, y);
+        self.data[index] = color;
     }
 
     /// Fill a rectangle with a gradient.
@@ -99,16 +128,19 @@ impl RasterImage {
 
 impl Image for RasterImage {
     fn get_width(&self) -> u32 {
-        if self.data.is_empty() {
-            return 0;
-        }
-        self.data[0].len().try_into().unwrap()
+        self.width
     }
     fn get_height(&self) -> u32 {
-        self.data.len().try_into().unwrap()
+        self.height
     }
     fn get_pixel(&self, x: u32, y: u32) -> RGB {
-        self.data[y as usize][x as usize]
+        *self.data_rgb(x, y)
+    }
+
+    fn get_data(&self) -> Option<&[u8]> {
+        let len = std::mem::size_of::<RGB>() * self.data.len();
+        let ptr = self.data.as_ptr();
+        Some(unsafe { std::slice::from_raw_parts(ptr as *const u8, len)})
     }
 }
 
@@ -128,5 +160,9 @@ pub mod tests {
                 .expect("path must be ok"),
         )
         .unwrap();
+
+        let v = img.get_data();
+        assert!(v.is_some());
+        println!("rgb sizeof: {}", std::mem::size_of::<RGB>());
     }
 }

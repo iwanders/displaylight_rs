@@ -90,7 +90,6 @@ impl Lights {
                 colors[c].b = (chunk[c].b as f32 * self.limit_factor) as u8;
             }
             msg.payload.color.color = colors;
-
             self.port.write_all(&msg.as_bytes())?;
         }
         Ok(())
