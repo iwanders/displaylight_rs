@@ -65,8 +65,8 @@ impl RasterImage {
 
     /// Create a raster image from the provided two dimension vector of pixels.
     pub fn from_2d_vec(data: &[Vec<RGB>]) -> RasterImage {
-        let width = data.len() as u32;
-        let height = data.get(0).expect("image should have at least one row").len() as u32;
+        let height = data.len() as u32;
+        let width = data.get(0).expect("image should have at least one row").len() as u32;
         let mut res: RasterImage = RasterImage{
             width,
             height,

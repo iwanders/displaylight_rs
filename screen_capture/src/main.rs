@@ -1,6 +1,23 @@
 use std::env::temp_dir;
 
+fn create_gradient() {
+    use screen_capture::Image;
+    let mut img = screen_capture::raster_image::RasterImage::filled(1920, 1080, screen_capture::RGB { r: 0, g: 0, b: 0 });
+    img.set_gradient(0, 1920, 0, 1080);
+    img.write_bmp(
+        temp_dir()
+            .join("gradient.bmp")
+            .to_str()
+            .expect("path must be ok"),
+    )
+    .unwrap();
+}
+
 fn main() {
+    if false {
+        create_gradient();
+    }
+
     let mut grabber = screen_capture::get_capture();
 
     let res = grabber.get_resolution();
