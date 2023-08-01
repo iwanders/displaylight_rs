@@ -3,11 +3,12 @@ use crate::raster_image::RasterImage;
 
 #[derive(Debug, Default, Copy, Clone, Eq, PartialEq)]
 #[repr(C)]
+#[repr(align(4))]
 /// Struct to represent a single pixel.
 pub struct RGB {
-    pub r: u8,
-    pub g: u8,
     pub b: u8,
+    pub g: u8,
+    pub r: u8,
 }
 
 impl RGB {
@@ -53,7 +54,6 @@ pub struct Resolution {
 
 /// Trait for something that represents an image.
 pub trait Image {
-
     /// Returns the width of the image.
     fn get_width(&self) -> u32;
 
@@ -169,5 +169,48 @@ pub trait Capture {
         _height: u32,
     ) -> bool {
         false
+    }
+}
+
+#[cfg(test)]
+pub mod tests {
+    use super::*;
+    use std::env::temp_dir;
+
+    #[test]
+    fn test_rgb_order() {
+        // Both X11 and Windows use the following to convert from the bytes behind the pointer to
+        // the actual pixel values.
+        /*
+        let masked = as_integer & 0x00FFFFFF;
+        RGB {
+            r: ((masked >> 16) & 0xFF) as u8,
+            g: ((masked >> 8) & 0xFF) as u8,
+            b: (masked & 0xFF) as u8,
+        }*/
+        // Lets make the RGB struct follow that order.
+        let as_integer = 0x00112233;
+        let masked = as_integer & 0x00FFFFFF;
+        let p = RGB {
+            r: ((masked >> 16) & 0xFF) as u8,
+            g: ((masked >> 8) & 0xFF) as u8,
+            b: (masked & 0xFF) as u8,
+        };
+        assert_eq!(p.r, 0x11);
+        assert_eq!(p.g, 0x22);
+        assert_eq!(p.b, 0x33);
+
+        // So                 xxRRGGBB
+        // let as_integer = 0x00112233;
+
+        // now, we can make an integer, reinterpret cast the thing and check that.
+        unsafe {
+            let rgb_from_integer =
+                std::mem::transmute::<*const i32, *const RGB>(&as_integer as *const i32);
+            assert_eq!((*rgb_from_integer).r, 0x11);
+            assert_eq!((*rgb_from_integer).g, 0x22);
+            assert_eq!((*rgb_from_integer).b, 0x33);
+        }
+        assert_eq!(std::mem::size_of::<RGB>(), std::mem::size_of::<u32>());
     }
 }
