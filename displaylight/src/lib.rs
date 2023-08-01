@@ -219,7 +219,7 @@ impl DisplayLight {
             let img = self.grabber.get_image();
 
             // Detect the black borders if we are configured to do so.
-            let mut borders;
+            let borders;
             if self.config.edge_detection_enable {
                 borders = border_detection::find_borders(
                     &*img,
