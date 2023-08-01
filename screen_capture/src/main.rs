@@ -69,6 +69,16 @@ fn main() {
     println!("Cloning image.");
 
     let z = img.clone();
+
+    let cloned_buffer = z.get_data().expect("expect a data buffer to be present");
+    let orig_buffer = img.get_data().expect("expect a data buffer to be present");
+    if cloned_buffer != orig_buffer {
+        println!("{:?}\n{:?}", &cloned_buffer[0..20], &orig_buffer[0..20]);
+        println!("cloned_buffer: {}", cloned_buffer.len());
+        println!("orig_buffer: {}", orig_buffer.len());
+        panic!("data of rasterimage not equivalent to real image");
+    }
+
     println!("Capture writing to temp.");
     z.write_ppm(temp_dir().join("z.ppm").to_str().expect("path must be ok"))
         .unwrap();

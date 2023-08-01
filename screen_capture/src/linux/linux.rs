@@ -34,6 +34,7 @@ impl Image for ImageX11 {
         if x > width || y > height {
             panic!("Retrieved out of bounds ({}, {})", x, y);
         }
+
         unsafe {
             let image = &(*(self.image.unwrap()));
             // println!("Image: {:?}", self.image.unwrap());
@@ -58,9 +59,11 @@ impl Image for ImageX11 {
         }
         unsafe {
             let image = &(*(self.image.unwrap()));
+            let width = image.width as usize;
+            let height = image.height as usize;
             assert!(image.bits_per_pixel / 8 == 4);
             let data = std::mem::transmute::<*const libc::c_char, *const RGB>(image.data);
-            let len = std::mem::size_of::<RGB>() * image.width as usize * image.height as usize;
+            let len = width * height;
             Some(std::slice::from_raw_parts(data, len))
         }
     }

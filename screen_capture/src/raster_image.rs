@@ -26,6 +26,16 @@ impl RasterImage {
     pub fn new(img: &dyn Image) -> RasterImage {
         let width = img.get_width();
         let height = img.get_height();
+
+        // The fastest copy ever.
+        if let Some(buffer) = img.get_data() {
+            return RasterImage {
+                width,
+                height,
+                data: buffer.to_vec(),
+            };
+        }
+
         let mut res: RasterImage = RasterImage {
             width,
             height,
