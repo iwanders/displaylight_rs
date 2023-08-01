@@ -90,6 +90,8 @@ impl Image for ImageWin {
             let data =
                 std::mem::transmute::<*const core::ffi::c_void, *const u8>(self.mapped.pData);
             let stride = (self.mapped.RowPitch / self.width) as u32;
+            // println!("rowpitch {}", self.mapped.RowPitch); 7680 for 1920
+            // println!("stride {}", stride); 4
             let as_integer = *std::mem::transmute::<*const u8, *const u32>(
                 data.offset((y * self.mapped.RowPitch + x * stride) as isize)
                     .try_into()
