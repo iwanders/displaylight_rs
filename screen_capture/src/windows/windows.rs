@@ -80,7 +80,7 @@ impl Image for ImageWin {
         if x > self.width || y > self.height {
             panic!("Retrieved out of bounds ({}, {})", x, y);
         }
-        // Finally, we can now do the whole casting dance on the mapped ata, and calculate what to retrieve.
+        // Finally, we can now do the whole casting dance on the mappe data, and calculate what to retrieve.
         // const uint8_t* data = reinterpret_cast<const uint8_t*>(mapped_.pData);
         // const uint8_t stride = (mapped_.RowPitch / getWidth());
         // return (*reinterpret_cast<const uint32_t*>(data + y * mapped_.RowPitch + x * stride)) & 0x00FFFFFF;

@@ -26,7 +26,7 @@ impl RasterImage {
     pub fn new(img: &dyn Image) -> RasterImage {
         let width = img.get_width();
         let height = img.get_height();
-        let mut res: RasterImage = RasterImage{
+        let mut res: RasterImage = RasterImage {
             width,
             height,
             data: vec![Default::default(); height as usize * width as usize],
@@ -41,7 +41,7 @@ impl RasterImage {
 
     /// Create a new raster image of specified width and height, filled with the provided color.
     pub fn filled(width: u32, height: u32, color: RGB) -> RasterImage {
-        let mut res: RasterImage = RasterImage{
+        let mut res: RasterImage = RasterImage {
             width,
             height,
             data: vec![Default::default(); height as usize * width as usize],
@@ -66,8 +66,11 @@ impl RasterImage {
     /// Create a raster image from the provided two dimension vector of pixels.
     pub fn from_2d_vec(data: &[Vec<RGB>]) -> RasterImage {
         let height = data.len() as u32;
-        let width = data.get(0).expect("image should have at least one row").len() as u32;
-        let mut res: RasterImage = RasterImage{
+        let width = data
+            .get(0)
+            .expect("image should have at least one row")
+            .len() as u32;
+        let mut res: RasterImage = RasterImage {
             width,
             height,
             data: vec![Default::default(); height as usize * width as usize],
@@ -140,7 +143,7 @@ impl Image for RasterImage {
     fn get_data(&self) -> Option<&[u8]> {
         let len = std::mem::size_of::<RGB>() * self.data.len();
         let ptr = self.data.as_ptr();
-        Some(unsafe { std::slice::from_raw_parts(ptr as *const u8, len)})
+        Some(unsafe { std::slice::from_raw_parts(ptr as *const u8, len) })
     }
 }
 
