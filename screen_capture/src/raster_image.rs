@@ -140,10 +140,8 @@ impl Image for RasterImage {
         *self.data_rgb(x, y)
     }
 
-    fn get_data(&self) -> Option<&[u8]> {
-        let len = std::mem::size_of::<RGB>() * self.data.len();
-        let ptr = self.data.as_ptr();
-        Some(unsafe { std::slice::from_raw_parts(ptr as *const u8, len) })
+    fn get_data(&self) -> Option<&[RGB]> {
+        Some(&self.data)
     }
 }
 

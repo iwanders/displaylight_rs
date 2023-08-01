@@ -46,6 +46,11 @@ fn main() {
     .unwrap();
     println!("Capture done writing");
 
+    let buffer = img.get_data();
+    if buffer.is_none() {
+        panic!("image didn't provide any data");
+    }
+
     let z = screen_capture::read_ppm(
         temp_dir()
             .join("foo.ppm")

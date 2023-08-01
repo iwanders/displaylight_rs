@@ -12,6 +12,15 @@ pub struct RGB {
 }
 
 impl RGB {
+    pub fn from_i32(v: i32) -> Self {
+        // Checked godbolt, this evaporates to a single 'mov' and 'and' instruction.
+        RGB {
+            r: ((v >> 16) & 0xFF) as u8,
+            g: ((v >> 8) & 0xFF) as u8,
+            b: (v & 0xFF) as u8,
+        }
+    }
+
     pub fn black() -> RGB {
         RGB { r: 0, g: 0, b: 0 }
     }
@@ -64,7 +73,7 @@ pub trait Image {
     fn get_pixel(&self, x: u32, y: u32) -> RGB;
 
     /// Returns the raw data buffer behind this image.
-    fn get_data(&self) -> Option<&[u8]> {
+    fn get_data(&self) -> Option<&[RGB]> {
         None
     }
 
@@ -175,7 +184,6 @@ pub trait Capture {
 #[cfg(test)]
 pub mod tests {
     use super::*;
-    use std::env::temp_dir;
 
     #[test]
     fn test_rgb_order() {

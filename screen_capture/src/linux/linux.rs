@@ -27,7 +27,7 @@ impl Image for ImageX11 {
 
     fn get_pixel(&self, x: u32, y: u32) -> RGB {
         if self.image.is_none() {
-            panic!("Used get_width on an image that doesn't exist.");
+            panic!("no image present to retrieve pixel");
         }
         let width = self.get_width();
         let height = self.get_height();
@@ -49,6 +49,19 @@ impl Image for ImageX11 {
                 g: ((masked >> 8) & 0xFF) as u8,
                 b: (masked & 0xFF) as u8,
             }
+        }
+    }
+
+    fn get_data(&self) -> Option<&[RGB]> {
+        if self.image.is_none() {
+            return None; // we can fail gracefully, might as well.
+        }
+        unsafe {
+            let image = &(*(self.image.unwrap()));
+            assert!(image.bits_per_pixel / 8 == 4);
+            let data = std::mem::transmute::<*const libc::c_char, *const RGB>(image.data);
+            let len = std::mem::size_of::<RGB>() * image.width as usize * image.height as usize;
+            Some(std::slice::from_raw_parts(data, len))
         }
     }
 }
