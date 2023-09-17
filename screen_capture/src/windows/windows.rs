@@ -106,6 +106,21 @@ impl Image for ImageWin {
             };
         }
     }
+
+    fn get_data(&self) -> Option<&[RGB]> {
+        // Should always have an image.
+        unsafe {
+            let data =
+                std::mem::transmute::<*const core::ffi::c_void, *const RGB>(self.mapped.pData);
+            let width = self.width as usize;
+            let height = self.height as usize;
+            let stride = (self.mapped.RowPitch / self.width) as u32;
+            assert!(stride == 4);
+            assert!(self.mapped.RowPitch / stride == self.width);
+            let len = width * height;
+            Some(std::slice::from_raw_parts(data, len))
+        }
+    }
 }
 
 // For d3d12 we could follow  https://github.com/microsoft/windows-samples-rs/blob/5d67b33e7115ec1dd4f8448301bf6ce794c93b5f/direct3d12/src/main.rs#L204-L234.
