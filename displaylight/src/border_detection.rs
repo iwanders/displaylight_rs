@@ -191,7 +191,9 @@ impl RectangleChangeLimiter {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::test_util::{CYAN, WHITE, YELLOW};
     use screen_capture::raster_image::RasterImageBGR;
+    use screen_capture::util::WriteSupport;
     use std::env::temp_dir;
 
     fn tmp_file(name: &str) -> String {
@@ -243,24 +245,6 @@ mod tests {
         assert_eq!(res, len);
     }
 
-    const WHITE: BGR = BGR {
-        r: 255,
-        g: 255,
-        b: 255,
-    };
-
-    const YELLOW: BGR = BGR {
-        r: 0,
-        g: 255,
-        b: 255,
-    };
-
-    const CYAN: BGR = BGR {
-        r: 0,
-        g: 255,
-        b: 255,
-    };
-
     #[test]
     fn test_fully_white() {
         let img = RasterImageBGR::filled(100, 100, WHITE);
@@ -276,7 +260,7 @@ mod tests {
     fn test_free_floating_rect() {
         let mut img = RasterImageBGR::filled(100, 100, BGR { r: 0, g: 0, b: 0 });
         img.fill_rectangle(30, 80, 20, 70, YELLOW);
-        let tracked = screen_capture::tracked_image::TrackedImage::new(Box::new(img));
+        let tracked = crate::test_util::TrackedImage::new(Box::new(img));
         let b = find_borders(&tracked, 10, false).expect("Only rectangular is false.");
         let mut track_results = tracked.draw_access(0.5);
         track_results.set_pixel(b.x_min, b.y_min, CYAN);
@@ -293,13 +277,13 @@ mod tests {
 
     #[test]
     fn test_horizontal_borders() {
-        let mut img = RasterImage::filled(100, 100, RGB { r: 0, g: 0, b: 0 });
-        img.fill_rectangle(0, 100, 20, 70, RGB::yellow());
-        let tracked = screen_capture::tracked_image::TrackedImage::new(Box::new(img));
+        let mut img = RasterImageBGR::filled(100, 100, BGR { r: 0, g: 0, b: 0 });
+        img.fill_rectangle(0, 100, 20, 70, YELLOW);
+        let tracked = crate::test_util::TrackedImage::new(Box::new(img));
         let b = find_borders(&tracked, 10, false).expect("Only rectangular is false.");
         let mut track_results = tracked.draw_access(0.5);
-        track_results.set_pixel(b.x_min, b.y_min, RGB::cyan());
-        track_results.set_pixel(b.x_max, b.y_max, RGB::white());
+        track_results.set_pixel(b.x_min, b.y_min, CYAN);
+        track_results.set_pixel(b.x_max, b.y_max, WHITE);
         track_results
             .write_ppm(&tmp_file("test_horizontal_borders.ppm"))
             .expect("Should succeed.");
@@ -312,13 +296,13 @@ mod tests {
 
     #[test]
     fn test_vertical_borders() {
-        let mut img = RasterImage::filled(100, 100, RGB { r: 0, g: 0, b: 0 });
-        img.fill_rectangle(30, 80, 0, 100, RGB::yellow());
-        let tracked = screen_capture::tracked_image::TrackedImage::new(Box::new(img));
+        let mut img = RasterImageBGR::filled(100, 100, BGR { r: 0, g: 0, b: 0 });
+        img.fill_rectangle(30, 80, 0, 100, YELLOW);
+        let tracked = crate::test_util::TrackedImage::new(Box::new(img));
         let b = find_borders(&tracked, 10, false).expect("Only rectangular is false.");
         let mut track_results = tracked.draw_access(0.5);
-        track_results.set_pixel(b.x_min, b.y_min, RGB::cyan());
-        track_results.set_pixel(b.x_max, b.y_max, RGB::white());
+        track_results.set_pixel(b.x_min, b.y_min, CYAN);
+        track_results.set_pixel(b.x_max, b.y_max, WHITE);
         track_results
             .write_ppm(&tmp_file("test_vertical_borders.ppm"))
             .expect("Should succeed.");
@@ -331,12 +315,12 @@ mod tests {
 
     #[test]
     fn test_black() {
-        let img = RasterImage::filled(1920, 1080, RGB { r: 0, g: 0, b: 0 });
-        let tracked = screen_capture::tracked_image::TrackedImage::new(Box::new(img));
+        let img = RasterImageBGR::filled(1920, 1080, BGR { r: 0, g: 0, b: 0 });
+        let tracked = crate::test_util::TrackedImage::new(Box::new(img));
         let b = find_borders(&tracked, 10, false).expect("Only rectangular is false.");
         let mut track_results = tracked.draw_access(0.5);
-        track_results.set_pixel(b.x_min, b.y_min, RGB::cyan());
-        track_results.set_pixel(b.x_max, b.y_max, RGB::white());
+        track_results.set_pixel(b.x_min, b.y_min, CYAN);
+        track_results.set_pixel(b.x_max, b.y_max, WHITE);
         track_results
             .write_bmp(&tmp_file("test_black.bmp"))
             .expect("Should succeed.");
@@ -349,10 +333,10 @@ mod tests {
 
     #[test]
     fn test_only_rectangular() {
-        let mut img = RasterImage::filled(100, 100, RGB { r: 0, g: 0, b: 0 });
-        img.fill_rectangle(20, 60, 20, 60, RGB::yellow());
-        img.fill_rectangle(40, 80, 40, 80, RGB::yellow());
-        let tracked = screen_capture::tracked_image::TrackedImage::new(Box::new(img));
+        let mut img = RasterImageBGR::filled(100, 100, BGR { r: 0, g: 0, b: 0 });
+        img.fill_rectangle(20, 60, 20, 60, YELLOW);
+        img.fill_rectangle(40, 80, 40, 80, YELLOW);
+        let tracked = crate::test_util::TrackedImage::new(Box::new(img));
         let b = find_borders(&tracked, 10, true);
         let track_results = tracked.draw_access(0.5);
         track_results
@@ -360,11 +344,11 @@ mod tests {
             .expect("Should succeed.");
         assert!(b.is_none());
 
-        let mut img = RasterImage::filled(100, 100, RGB { r: 0, g: 0, b: 0 });
-        img.fill_rectangle(10, 40, 30, 60, RGB::yellow());
-        img.fill_rectangle(30, 70, 20, 30, RGB::yellow());
-        img.fill_rectangle(60, 90, 30, 60, RGB::yellow());
-        let tracked = screen_capture::tracked_image::TrackedImage::new(Box::new(img));
+        let mut img = RasterImageBGR::filled(100, 100, BGR { r: 0, g: 0, b: 0 });
+        img.fill_rectangle(10, 40, 30, 60, YELLOW);
+        img.fill_rectangle(30, 70, 20, 30, YELLOW);
+        img.fill_rectangle(60, 90, 30, 60, YELLOW);
+        let tracked = crate::test_util::TrackedImage::new(Box::new(img));
         let b = find_borders(&tracked, 10, true);
         let track_results = tracked.draw_access(0.5);
         track_results

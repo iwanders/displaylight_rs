@@ -26,8 +26,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     control.set_config(&config)?;
 
     // for _ in 0..100 {
-        // control.fill(255, 255, 255)?;
-        // thread::sleep(time::Duration::from_millis(100));
+    // control.fill(255, 255, 255)?;
+    // thread::sleep(time::Duration::from_millis(100));
     // }
 
     const MAX_LEDS: usize = 10;

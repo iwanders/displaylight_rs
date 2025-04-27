@@ -16,6 +16,9 @@ pub mod rectangle;
 pub mod sampler;
 pub mod zones;
 
+#[cfg(test)]
+pub mod test_util;
+
 use rectangle::Rectangle;
 use screen_capture::{Capture, Resolution};
 
@@ -284,9 +287,12 @@ impl DisplayLight {
 
 #[cfg(test)]
 mod tests {
+    use crate::test_util::{CYAN, WHITE};
+
     use super::*;
-    use screen_capture::raster_image::RasterImage;
-    use screen_capture::{Image, RGB};
+    use lights::RGB;
+    use screen_capture::raster_image::RasterImageBGR;
+    use screen_capture::{ImageBGR, BGR};
     use std::env::temp_dir;
 
     fn tmp_file(name: &str) -> String {
@@ -297,13 +303,14 @@ mod tests {
             .to_owned()
     }
 
-    fn make_dummy_gradient() -> RasterImage {
-        let mut img = RasterImage::filled(1920, 1080, RGB { r: 0, g: 0, b: 0 });
+    fn make_dummy_gradient() -> RasterImageBGR {
+        let mut img = RasterImageBGR::filled(1920, 1080, BGR { r: 0, g: 0, b: 0 });
         img.set_gradient(200, 1920 - 200, 0, 1080);
         img
     }
     #[test]
     fn test_full() {
+        use screen_capture::util::WriteSupport;
         // Make a dummy image.
         let img = make_dummy_gradient();
         img.write_bmp(
@@ -315,12 +322,12 @@ mod tests {
         .unwrap();
 
         // Detect the black borders
-        let tracked = screen_capture::tracked_image::TrackedImage::new(Box::new(img));
+        let tracked = crate::test_util::TrackedImage::new(Box::new(img));
         let b =
             border_detection::find_borders(&tracked, 5, false).expect("Only rectangular is false");
         let mut track_results = tracked.draw_access(0.5);
-        track_results.set_pixel(b.x_min, b.y_min, RGB::cyan());
-        track_results.set_pixel(b.x_max, b.y_max, RGB::white());
+        track_results.set_pixel(b.x_min, b.y_min, CYAN);
+        track_results.set_pixel(b.x_max, b.y_max, WHITE);
         track_results
             .write_ppm(&tmp_file("test_full_borders.ppm"))
             .expect("Should succeed.");
@@ -337,17 +344,23 @@ mod tests {
         let values = sampler.sample(&tracked);
         assert_eq!(values.len(), 228);
         let track_results = tracked.draw_access(0.5);
+        let values: Vec<BGR> = values
+            .iter()
+            .copied()
+            .map(|z| BGR {
+                r: z.r,
+                g: z.g,
+                b: z.b,
+            })
+            .collect();
 
         track_results
             .write_ppm(&tmp_file("test_full_sampling.ppm"))
             .expect("Should succeed.");
 
         // With the values known, we can color the zones appropriately.
-        let mut canvas = RasterImage::filled(
-            tracked.get_width(),
-            tracked.get_height(),
-            Default::default(),
-        );
+        let mut canvas =
+            RasterImageBGR::filled(tracked.width(), tracked.height(), Default::default());
         for (i, zone) in zones.iter().enumerate() {
             canvas.fill_rectangle(zone.x_min, zone.x_max, zone.y_min, zone.y_max, values[i])
         }
