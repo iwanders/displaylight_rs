@@ -1,12 +1,9 @@
 [workspace]
+resolver = "2"
+members = ["displaylight", "lights", "firmware"]
 
-members = [
-    "screen_capture",
-    "displaylight",
-    "lights",
-    "firmware",
-]
-
+[workspace.dependencies]
+screen_capture = { git = "https://github.com/iwanders/screen_capture", rev = "99168f02a363a86820a783bc8428e3b008b26d73" }
 
 [profile.release]
 opt-level = 3

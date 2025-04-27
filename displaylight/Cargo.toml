@@ -6,7 +6,10 @@ authors = ["Ivor Wanders <ivor@iwanders.net>"]
 license = "MIT OR Apache-2.0"
 
 [dependencies]
-screen_capture = { path = "../screen_capture" }
+
+
+screen_capture = { workspace = true }
+
 lights = { path = "../lights" }
 clap = "2.34.0"
 

@@ -151,7 +151,7 @@ impl DisplayLight {
             limiter: rate_limiter::Limiter::new(config.rate),
             lights: lights::Lights::new(&config.port)?,
             config,
-            grabber: screen_capture::get_capture(),
+            grabber: screen_capture::capture(),
         })
     }
 
@@ -182,7 +182,7 @@ impl DisplayLight {
 
         loop {
             // First, check if the resolution of the desktop environment has changed, if so, act.
-            let current_resolution = self.grabber.get_resolution();
+            let current_resolution = self.grabber.resolution();
             if cached_resolution.is_none()
                 || *cached_resolution.as_ref().unwrap() != current_resolution
             {
@@ -216,7 +216,13 @@ impl DisplayLight {
             }
 
             // Then, we can grab the actual image.
-            let img = self.grabber.get_image();
+            let img = self.grabber.image();
+            if img.is_err() {
+                self.lights.set_leds(&canvas)?;
+                self.limiter.sleep();
+                continue;
+            }
+            let img = img.unwrap();
 
             // Detect the black borders if we are configured to do so.
             let borders;
@@ -230,8 +236,8 @@ impl DisplayLight {
                 borders = Some(Rectangle {
                     x_min: 0,
                     y_min: 0,
-                    x_max: img.get_width() - 1,
-                    y_max: img.get_height() - 1,
+                    x_max: img.width() - 1,
+                    y_max: img.height() - 1,
                 });
             }
 

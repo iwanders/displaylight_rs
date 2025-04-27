@@ -1,7 +1,7 @@
 //! A struct that efficiently samples the image and calculates averaged values.
 use crate::rectangle::Rectangle;
 use lights::RGB as lRGB;
-use screen_capture::{Image, RGB};
+use screen_capture::ImageBGR;
 
 #[derive(Copy, Clone, Debug)]
 struct Index {
@@ -67,9 +67,9 @@ impl Sampler {
     }
 
     // Sample an image and return a vector of RGB values.
-    pub fn sample(&self, image: &dyn Image) -> Vec<RGB> {
+    pub fn sample(&self, image: &dyn ImageBGR) -> Vec<lRGB> {
         // Use the prepared indices for sampling, going from an image to a set of colors.
-        let mut res: Vec<RGB> = Vec::<RGB>::with_capacity(self.indices.len());
+        let mut res: Vec<lRGB> = Vec::<lRGB>::with_capacity(self.indices.len());
         res.resize(self.indices.len(), Default::default());
         for (i, sample_points) in self.indices.iter().enumerate() {
             // Do something smart here like collecting all pixels on the sample points...
@@ -78,7 +78,7 @@ impl Sampler {
             let mut b = 0u32;
             let mut t = 0u32;
             for point in sample_points.iter() {
-                let pixel = image.get_pixel(point.x, point.y);
+                let pixel = image.pixel(point.x, point.y);
                 r += pixel.r as u32;
                 g += pixel.g as u32;
                 b += pixel.b as u32;
@@ -87,10 +87,10 @@ impl Sampler {
             // This shouldn't every happen, but lets handle it in case there's no sample points in
             // the cell.
             if t == 0 {
-                res[i] = RGB::black();
+                res[i] = lRGB { r: 0, g: 0, b: 0 };
                 continue;
             }
-            res[i] = RGB {
+            res[i] = lRGB {
                 r: (r / t) as u8,
                 g: (g / t) as u8,
                 b: (b / t) as u8,
@@ -100,7 +100,7 @@ impl Sampler {
     }
 
     /// Sample an image and write the results into an array of [`lights::RGB`].
-    pub fn sample_into(&self, image: &dyn Image, res: &mut [lRGB]) {
+    pub fn sample_into(&self, image: &dyn ImageBGR, res: &mut [lRGB]) {
         // Use the prepared indices for sampling, going from an image to a set of colors.
         for (i, sample_points) in self.indices.iter().enumerate() {
             // Do something smart here like collecting all pixels on the sample points...
@@ -109,7 +109,7 @@ impl Sampler {
             let mut b = 0u32;
             let mut t = 0u32;
             for point in sample_points.iter() {
-                let pixel = image.get_pixel(point.x, point.y);
+                let pixel = image.pixel(point.x, point.y);
                 r += pixel.r as u32;
                 g += pixel.g as u32;
                 b += pixel.b as u32;

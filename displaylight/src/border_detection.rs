@@ -1,7 +1,7 @@
 //! Find the borders that bound the non black region in an image.
 
 use crate::rectangle::Rectangle;
-use screen_capture::{Image, RGB};
+use screen_capture::{ImageBGR, BGR};
 
 // This bespoke bisection procedure to find the presumably single transition in a 1d search.
 // This bails out if lower and upper are identical, so if the return of f at start min and max
@@ -30,12 +30,16 @@ fn bisect(f: &dyn Fn(u32) -> bool, min: u32, max: u32) -> u32 {
     min
 }
 
+fn black() -> BGR {
+    BGR { r: 0, g: 0, b: 0 }
+}
+
 /// find the borders that define the useful region in this image.
 ///
 /// * `bisections_per_side` - The number of bisections to perform per side.
 /// * `only_rectangular` - If true, only returns a Some if the bisecions agreed on proper rectangle with straight edges.
 pub fn find_borders(
-    image: &dyn Image,
+    image: &dyn ImageBGR,
     bisections_per_side: u32,
     only_rectangular: bool,
 ) -> Option<Rectangle> {
@@ -50,32 +54,24 @@ pub fn find_borders(
     let bounds = (0..bisections_per_side)
         .map(|i| {
             let mut bisection_res: [u32; 4] = [0, 0, 0, 0];
-            let max_x = image.get_width() - 1;
-            let max_y = image.get_height() - 1;
+            let max_x = image.width() - 1;
+            let max_y = image.height() - 1;
             let center_x = max_x / 2;
             let center_y = max_y / 2;
             let mid_x = max_x / (bisections_per_side + 1) * (i + 1);
             let mid_y = max_y / (bisections_per_side + 1) * (i + 1);
 
             // Perform left bound, find x_min
-            bisection_res[0] = bisect(&|x| image.get_pixel(x, mid_y) == RGB::black(), 0, center_x);
+            bisection_res[0] = bisect(&|x| image.pixel(x, mid_y) == black(), 0, center_x);
 
             // Perform right bound, find x_max
-            bisection_res[1] = bisect(
-                &|x| image.get_pixel(x, mid_y) != RGB::black(),
-                center_x,
-                max_x,
-            );
+            bisection_res[1] = bisect(&|x| image.pixel(x, mid_y) != black(), center_x, max_x);
 
             // Perform lower bound, find y_min
-            bisection_res[2] = bisect(&|y| image.get_pixel(mid_x, y) == RGB::black(), 0, center_y);
+            bisection_res[2] = bisect(&|y| image.pixel(mid_x, y) == black(), 0, center_y);
 
             // Perform upper bound, find y_max
-            bisection_res[3] = bisect(
-                &|y| image.get_pixel(mid_x, y) != RGB::black(),
-                center_y,
-                max_y,
-            );
+            bisection_res[3] = bisect(&|y| image.pixel(mid_x, y) != black(), center_y, max_y);
 
             // println!("Bisection res: {:?}", bisection_res);
             bisection_res
@@ -195,8 +191,7 @@ impl RectangleChangeLimiter {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use screen_capture::raster_image::RasterImage;
-    use screen_capture::Image;
+    use screen_capture::raster_image::RasterImageBGR;
     use std::env::temp_dir;
 
     fn tmp_file(name: &str) -> String {
@@ -248,9 +243,27 @@ mod tests {
         assert_eq!(res, len);
     }
 
+    const WHITE: BGR = BGR {
+        r: 255,
+        g: 255,
+        b: 255,
+    };
+
+    const YELLOW: BGR = BGR {
+        r: 0,
+        g: 255,
+        b: 255,
+    };
+
+    const CYAN: BGR = BGR {
+        r: 0,
+        g: 255,
+        b: 255,
+    };
+
     #[test]
     fn test_fully_white() {
-        let img = RasterImage::filled(100, 100, RGB::white());
+        let img = RasterImageBGR::filled(100, 100, WHITE);
         let b = find_borders(&img, 5, false).expect("Only rectangular is false.");
 
         assert_eq!(b.x_min, 0);
@@ -261,13 +274,13 @@ mod tests {
 
     #[test]
     fn test_free_floating_rect() {
-        let mut img = RasterImage::filled(100, 100, RGB { r: 0, g: 0, b: 0 });
-        img.fill_rectangle(30, 80, 20, 70, RGB::yellow());
+        let mut img = RasterImageBGR::filled(100, 100, BGR { r: 0, g: 0, b: 0 });
+        img.fill_rectangle(30, 80, 20, 70, YELLOW);
         let tracked = screen_capture::tracked_image::TrackedImage::new(Box::new(img));
         let b = find_borders(&tracked, 10, false).expect("Only rectangular is false.");
         let mut track_results = tracked.draw_access(0.5);
-        track_results.set_pixel(b.x_min, b.y_min, RGB::cyan());
-        track_results.set_pixel(b.x_max, b.y_max, RGB::white());
+        track_results.set_pixel(b.x_min, b.y_min, CYAN);
+        track_results.set_pixel(b.x_max, b.y_max, WHITE);
         track_results
             .write_ppm(&tmp_file("free_floating.ppm"))
             .expect("Should succeed.");
