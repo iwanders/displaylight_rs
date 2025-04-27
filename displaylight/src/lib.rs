@@ -228,21 +228,20 @@ impl DisplayLight {
             let img = img.unwrap();
 
             // Detect the black borders if we are configured to do so.
-            let borders;
-            if self.config.edge_detection_enable {
-                borders = border_detection::find_borders(
+            let borders = if self.config.edge_detection_enable {
+                border_detection::find_borders(
                     &*img,
                     self.config.edge_detection_bisect_count,
                     self.config.edge_detection_rectangular_only,
-                );
+                )
             } else {
-                borders = Some(Rectangle {
+                Some(Rectangle {
                     x_min: 0,
                     y_min: 0,
                     x_max: img.width() - 1,
                     y_max: img.height() - 1,
-                });
-            }
+                })
+            };
 
             // Border size changed, make a new sampler.
             if let Some(mut borders) = borders {
@@ -287,10 +286,8 @@ impl DisplayLight {
 
 #[cfg(test)]
 mod tests {
-    use crate::test_util::{CYAN, WHITE};
-
     use super::*;
-    use lights::RGB;
+    use crate::test_util::{CYAN, WHITE};
     use screen_capture::raster_image::RasterImageBGR;
     use screen_capture::{ImageBGR, BGR};
     use std::env::temp_dir;

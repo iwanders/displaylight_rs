@@ -2,7 +2,8 @@
 
 ![display_light_active](https://raw.githubusercontent.com/iwanders/DisplayLight/master/displaylight.gif)
 
-I've continued development on the `screen_capture` crate [here](https://github.com/iwanders/screen_capture).
+I've continued development on the `screen_capture` crate [here](https://github.com/iwanders/screen_capture), this workspace now
+consumes that crate.
 
 This [Rust][rust] workspace is a rewrite of my [DisplayLight](https://github.com/iwanders/DisplayLight)
 project. It colors leds mounted behind the monitor with the colors shown on the display at that location, this is known as [bias lighting](https://en.wikipedia.org/wiki/Bias_lighting), (example [gif](https://github.com/iwanders/DisplayLight/blob/master/displaylight.gif)).
@@ -63,7 +64,7 @@ usb_dev.poll(&mut [serial])
 ```
 
 Is supposed to be called as many times as possible, preferably from an interrupt. But it seems that
-enabling `NVIC::unmask(Interrupt::USB_LP_CAN_RX0);` and calling it from that interrupt causes the 
+enabling `NVIC::unmask(Interrupt::USB_LP_CAN_RX0);` and calling it from that interrupt causes the
 interrupt to fire indefinitely on itself. Instead, this is just called from the main program loop.
 
 ### License

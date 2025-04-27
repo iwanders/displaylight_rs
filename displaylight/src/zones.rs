@@ -17,8 +17,7 @@ impl Zones {
         horizontal_depth: u32,
         vertical_depth: u32,
     ) -> Vec<Rectangle> {
-        let mut res: Vec<Rectangle> = vec![];
-        res.reserve(Zones::LEDS as usize);
+        let mut res: Vec<Rectangle> = Vec::with_capacity(Zones::LEDS as usize);
 
         let width = rectangle.x_max - rectangle.x_min;
         let height = rectangle.y_max - rectangle.y_min;
