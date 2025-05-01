@@ -183,6 +183,7 @@ impl DisplayLight {
         // The resolution is used for the capture setup and config retrieval, store the old value.
         let mut cached_resolution: Option<Resolution> = None;
 
+        let mut consecutive_capture_fails: usize = 0;
         loop {
             // First, check if the resolution of the desktop environment has changed, if so, act.
             let current_resolution = self.grabber.resolution();
@@ -223,8 +224,11 @@ impl DisplayLight {
             if img.is_err() {
                 self.lights.set_leds(&canvas)?;
                 self.limiter.sleep();
+                consecutive_capture_fails += 1;
+                println!("Failed to retrieve {consecutive_capture_fails} images.");
                 continue;
             }
+            consecutive_capture_fails = 0;
             let img = img.unwrap();
 
             // Detect the black borders if we are configured to do so.
