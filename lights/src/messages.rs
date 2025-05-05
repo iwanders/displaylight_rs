@@ -1,4 +1,5 @@
 //! Message structs adopted from the C++ implementation running on the microcontroller.
+#![allow(dead_code)]
 
 /*
 //  Message definitions
