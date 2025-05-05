@@ -139,7 +139,7 @@ fn get_config(width: u32, height: u32, specs: &[CaptureSpecification]) -> Captur
 /// DisplayLight object that will perform the loop to check the screen, analyse and update the leds.
 pub struct DisplayLight {
     config: Config,
-    grabber: Box<dyn Capture>,
+    grabber: Option<Box<dyn Capture>>,
     lights: lights::Lights,
     limiter: rate_limiter::Limiter,
 }
@@ -154,7 +154,7 @@ impl DisplayLight {
             limiter: rate_limiter::Limiter::new(config.rate),
             lights: lights::Lights::new(&config.port)?,
             config,
-            grabber: screen_capture::capture(),
+            grabber: None,
         })
     }
 
@@ -185,8 +185,22 @@ impl DisplayLight {
 
         let mut consecutive_capture_fails: usize = 0;
         loop {
+            // If the grabber isn't setup yet, try to set it up.
+            if self.grabber.is_none() {
+                let grabber = screen_capture::capture();
+                match grabber {
+                    Ok(g) => self.grabber = Some(g),
+                    Err(e) => {
+                        println!("Setting up grabber failed: {e:?}");
+                        self.limiter.sleep();
+                        continue;
+                    }
+                }
+            }
+            let grabber = self.grabber.as_mut().unwrap();
+
             // First, check if the resolution of the desktop environment has changed, if so, act.
-            let current_resolution = self.grabber.resolution();
+            let current_resolution = grabber.resolution();
             if cached_resolution.is_none()
                 || *cached_resolution.as_ref().unwrap() != current_resolution
             {
@@ -197,20 +211,30 @@ impl DisplayLight {
                 // prepare the capture accordingly.
                 let config = get_config(width, height, &self.config.capture);
 
-                self.grabber.prepare_capture(
+                if let Err(e) = grabber.prepare_capture(
                     config.display,
                     config.x,
                     config.y,
                     config.width,
                     config.height,
-                );
+                ) {
+                    println!("Failed preparing capture {e:?}");
+                    self.grabber = None;
+                    continue;
+                };
                 // Store the current resolution.
                 cached_resolution = Some(current_resolution);
             }
 
             // Now, we are ready to try and get the image:
-            let res = self.grabber.capture_image();
-            if !res {
+            let res = grabber.capture_image();
+            if let Err(e) = res {
+                consecutive_capture_fails += 1;
+                if consecutive_capture_fails > 10 {
+                    println!("Got 10 consecutive capture fails, resetting grabber; {e:?}");
+                    self.grabber = None;
+                    consecutive_capture_fails = 0;
+                }
                 // Getting the image failed... :( Lets wait a bit and try again.
                 // Lets keep the leds at the old color. May make failures less noticable, but uac on windows doesn't
                 // look ugly when we can't grab the image for a while.
@@ -220,12 +244,12 @@ impl DisplayLight {
             }
 
             // Then, we can grab the actual image.
-            let img = self.grabber.image();
-            if img.is_err() {
+            let img = grabber.image();
+            if let Err(e) = img {
                 self.lights.set_leds(&canvas)?;
                 self.limiter.sleep();
                 consecutive_capture_fails += 1;
-                println!("Failed to retrieve {consecutive_capture_fails} images.");
+                println!("Failed to retrieve {consecutive_capture_fails} images, error: {e:?}");
                 continue;
             }
             consecutive_capture_fails = 0;
