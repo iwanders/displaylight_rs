@@ -188,6 +188,8 @@ impl DisplayLight {
             // If the grabber isn't setup yet, try to set it up.
             if self.grabber.is_none() {
                 let grabber = screen_capture::capture();
+                // Ensure we also clear the cached resolution, such that we actually prepare the capture again.
+                cached_resolution = None;
                 match grabber {
                     Ok(g) => self.grabber = Some(g),
                     Err(e) => {
