@@ -3,7 +3,7 @@ resolver = "2"
 members = ["displaylight", "lights", "firmware"]
 
 [workspace.dependencies]
-screen_capture = { git = "https://github.com/iwanders/screen_capture", rev = "5da4468f522b5846e62fec872f2a89cb40194617" }
+screen_capture = { git = "https://github.com/iwanders/screen_capture", rev = "91e2d4e1f30cce530949a4fcdfb67d5817117072" }
 
 [profile.release]
 opt-level = 3
