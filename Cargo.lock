@@ -412,7 +412,7 @@ checksum = "94143f37725109f92c262ed2cf5e59bce7498c01bcc1502d7b9afe439a4e9f49"
 [[package]]
 name = "screen_capture"
 version = "0.0.0"
-source = "git+https://github.com/iwanders/screen_capture?rev=91e2d4e1f30cce530949a4fcdfb67d5817117072#91e2d4e1f30cce530949a4fcdfb67d5817117072"
+source = "git+https://github.com/iwanders/screen_capture?rev=50c56ced33cb8248d4a9c1a0fb36afa77c765bdb#50c56ced33cb8248d4a9c1a0fb36afa77c765bdb"
 dependencies = [
  "image",
  "libc",
