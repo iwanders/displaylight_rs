@@ -21,8 +21,12 @@ The hardware is now based on an STM32F103 'blue pill' development board. It is f
 
 Running on either Windows and on Linux is a matter of `cargo run --release`. Configuration lives in [config](displaylight/config/) and is selected based on the operating system. Performance is identical to the C++ version, running at ~3% of an i7-4770TE core when sampling a 1920x1080 image at 60 Hz.
 
-The [screen_capture](screen_capture) crate used to obtain the screen captures is completely stand alone and ~~could~~ has been used outside of this project.
+The [screen_capture](https://github.com/iwanders/screen_capture) crate used to obtain the screen captures is completely stand alone and development on it is moved out of this repo.
 
+Dependencies required to be installed on a fresh machine:
+```
+pkg-config libudev-dev libx11-dev  libxext-dev
+```
 
 ## displaylight_fw
 
